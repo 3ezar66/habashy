@@ -183,11 +183,14 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
           transition={{ duration: 1 }}
           className="text-center mb-12"
         >
-          <h1 className="text-5xl font-bold mb-4 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-            سامانه شناسایی ماینر ایلام
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
+            سامانه کاشف - نسخه شبح حبشی
           </h1>
-          <p className="text-xl text-gray-300">
-            تحلیل پیشرفته شبکه‌های کریپتوکارنسی
+          <p className="text-lg text-gray-300 mb-2">
+            اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
+          </p>
+          <p className="text-sm text-gray-400">
+            استان ایلام • جمهوری اسلامی ایران
           </p>
         </motion.div>
 
