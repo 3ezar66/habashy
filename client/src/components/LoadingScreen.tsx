@@ -15,7 +15,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
     { text: "فعال‌سازی ماژول‌های RF و ارتعاشی...", coin: "📡", color: "#627eea" },
     { text: "��سکن پولهای رمزنگاری شده...", coin: "₳", color: "#0033ad" },
     { text: "کالیبراسیون سنسورهای حرارتی...", coin: "🌡️", color: "#f2a900" },
-    { text: "شناسایی GPU فارم‌ها...", coin: "◊", color: "#00b8a9" },
+    { text: "بهینه‌سازی الگوریتم‌های تشخیص...", coin: "⚡", color: "#00b8a9" },
     { text: "فعال‌سازی سیستم نظارت...", coin: "◈", color: "#ff6b6b" },
     { text: "راه‌اندازی داشبورد نهایی...", coin: "●", color: "#4ecdc4" }
   ];
