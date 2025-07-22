@@ -1,5 +1,5 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { StatsOverview } from "@/components/StatsOverview";
+import StatsOverview from "@/components/StatsOverview";
 import InteractiveMap from "@/components/InteractiveMap";
 import DeviceList from "@/components/DeviceList";
 import RecentActivity from "@/components/RecentActivity";
