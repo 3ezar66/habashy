@@ -8,6 +8,7 @@ import ScanControls from "@/components/ScanControls";
 import AdvancedDetectionCenter from "@/components/AdvancedDetectionCenter";
 import Advanced3DMap from "@/components/Advanced3DMap";
 import RealTimeAlerts from "@/components/RealTimeAlerts";
+import AdvancedAnalytics from "@/components/AdvancedAnalytics";
 import {
   Radar,
   Map,
@@ -47,7 +48,7 @@ export default function Dashboard() {
 
       {/* Main Tabs */}
       <Tabs defaultValue="overview" className="w-full">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-6">
           <TabsTrigger value="overview" className="flex items-center">
             <BarChart3 className="ml-2 h-4 w-4" />
             نمای کلی
@@ -59,6 +60,10 @@ export default function Dashboard() {
           <TabsTrigger value="3dmap" className="flex items-center">
             <Map className="ml-2 h-4 w-4" />
             نقشه سه‌بعدی
+          </TabsTrigger>
+          <TabsTrigger value="analytics" className="flex items-center">
+            <Brain className="ml-2 h-4 w-4" />
+            تحلیل هوشمند
           </TabsTrigger>
           <TabsTrigger value="devices" className="flex items-center">
             <Target className="ml-2 h-4 w-4" />
@@ -77,7 +82,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center text-blue-800">
                   <Map className="ml-2 h-5 w-5" />
-                  نقشه تعاملی کلا��یک
+                  نقشه تعاملی کلاسیک
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -119,6 +124,11 @@ export default function Dashboard() {
         {/* 3D Map Tab */}
         <TabsContent value="3dmap" className="space-y-6">
           <Advanced3DMap />
+        </TabsContent>
+
+        {/* Advanced Analytics Tab */}
+        <TabsContent value="analytics" className="space-y-6">
+          <AdvancedAnalytics />
         </TabsContent>
 
         {/* Devices Tab */}
@@ -173,7 +183,7 @@ export default function Dashboard() {
                     <span className="font-semibold persian-numbers text-green-600">94.2%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">زمان آخر��ن اسکن</span>
+                    <span className="text-sm text-muted-foreground">زمان آخرین اسکن</span>
                     <span className="font-semibold text-xs">۵ دقیقه پیش</span>
                   </div>
                 </div>
