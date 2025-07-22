@@ -13,7 +13,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const loadingSteps = [
     { text: "آنالیز شبکه‌های بلاک‌چین...", coin: "₿", color: "#f7931a" },
     { text: "شناسایی ماینرهای بیت‌کوین...", coin: "Ξ", color: "#627eea" },
-    { text: "اسکن پولهای رمزنگاری شده...", coin: "₳", color: "#0033ad" },
+    { text: "��سکن پولهای رمزنگاری شده...", coin: "₳", color: "#0033ad" },
     { text: "تحلیل الگوریتم‌های استخراج...", coin: "⚡", color: "#f2a900" },
     { text: "شناسایی GPU فارم‌ها...", coin: "◊", color: "#00b8a9" },
     { text: "فعال‌سازی سیستم نظارت...", coin: "◈", color: "#ff6b6b" },
@@ -183,10 +183,10 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
           transition={{ duration: 1 }}
           className="text-center mb-12"
         >
-          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent">
-            سامانه کاشف - نسخه شبح حبشی
+          <h1 className="text-4xl font-bold mb-2 bg-gradient-to-r from-blue-400 via-purple-500 to-pink-500 bg-clip-text text-transparent" style={{ fontFamily: "'Aref Ruqaa Ink', serif" }}>
+            سامانه کاشف - نسخه شبح حبشی 4
           </h1>
-          <p className="text-lg text-gray-300 mb-2">
+          <p className="text-lg text-gray-300 mb-2" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>
             اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
           </p>
           <p className="text-sm text-gray-400">
