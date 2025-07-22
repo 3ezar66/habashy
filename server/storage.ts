@@ -218,15 +218,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getUser(id: number): Promise<User | undefined> {
-    return undefined;
+    try {
+      const user = db.prepare('SELECT * FROM users WHERE id = ?').get(id);
+      return user as User | undefined;
+    } catch (error) {
+      console.error('Error getting user by id:', error);
+      return undefined;
+    }
   }
 
   async getUserByUsername(username: string): Promise<User | undefined> {
-    return undefined;
+    try {
+      const user = db.prepare('SELECT * FROM users WHERE username = ?').get(username);
+      return user as User | undefined;
+    } catch (error) {
+      console.error('Error getting user by username:', error);
+      return undefined;
+    }
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {
-    return insertUser as User;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO users (username, password, email, role, is_active)
+        VALUES (?, ?, ?, ?, ?)
+      `);
+      const result = stmt.run(
+        insertUser.username,
+        insertUser.password,
+        insertUser.email || null,
+        insertUser.role || 'operator',
+        insertUser.isActive !== false ? 1 : 0
+      );
+
+      const newUser = db.prepare('SELECT * FROM users WHERE id = ?').get(result.lastInsertRowid);
+      return newUser as User;
+    } catch (error) {
+      console.error('Error creating user:', error);
+      throw error;
+    }
   }
 
   async getDetectedMiners(): Promise<DetectedMiner[]> {
