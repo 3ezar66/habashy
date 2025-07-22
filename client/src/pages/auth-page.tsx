@@ -30,7 +30,7 @@ export default function AuthPage() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">
-            ورود به سامانه تشخیص ماینر
+            ورود به ��امانه تشخیص ماینر
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -63,8 +63,8 @@ export default function AuthPage() {
                 dir="rtl"
               />
             </div>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "در حال ورود..." : "ورود"}
+            <Button type="submit" className="w-full" disabled={login.isPending}>
+              {login.isPending ? "در حال ورود..." : "ورود"}
             </Button>
           </form>
         </CardContent>
