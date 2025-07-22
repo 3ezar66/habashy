@@ -26,11 +26,11 @@ async function hashPassword(password: string) {
 
 async function initializeDefaultUser() {
   try {
-    const existingUser = await storage.getUserByUsername("qwerty");
+    const existingUser = await storage.getUserByUsername("4501145031");
     if (!existingUser) {
       await storage.createUser({
-        username: "qwerty",
-        password: await hashPassword("azerty"),
+        username: "4501145031",
+        password: await hashPassword("470505"),
         role: "admin"
       });
       console.log("Default admin user created successfully");
