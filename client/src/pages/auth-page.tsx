@@ -4,49 +4,24 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/components/AuthProvider";
 
 export default function AuthPage() {
   const [, setLocation] = useLocation();
-  const [isLoading, setIsLoading] = useState(false);
   const [username, setUsername] = useState("4501145031");
   const [password, setPassword] = useState("470505");
-  const { toast } = useToast();
+  const { login } = useAuth();
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    setIsLoading(true);
 
     try {
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ username, password }),
-      });
-
-      if (response.ok) {
-        toast({
-          title: "ورود موفق",
-          description: "با موفقیت وارد شدید",
-        });
-        setLocation("/");
-      } else {
-        toast({
-          title: "خطا در ورود",
-          description: "نام کاربری یا رمز عبور اشتباه است",
-          variant: "destructive",
-        });
-      }
+      await login.mutateAsync({ username, password });
+      // AuthProvider will handle the redirect via onSuccess
+      setLocation("/");
     } catch (error) {
-      toast({
-        title: "خطا",
-        description: "خطا در اتصال به سرور",
-        variant: "destructive",
-      });
-    } finally {
-      setIsLoading(false);
+      // Error is handled by AuthProvider's onError
+      console.error("Login failed:", error);
     }
   };
 
