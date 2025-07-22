@@ -640,11 +640,193 @@ print(json.dumps(result, ensure_ascii=False))
     }
   });
 
+  // Advanced Detection System Endpoints
+
+  // Start advanced detection
+  app.post("/api/advanced-detection/start", async (req, res) => {
+    try {
+      const { detection_types, location, duration } = req.body;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'start'], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      const config = {
+        detection_types: detection_types || ['rf_detection', 'vibration_analysis', 'electromagnetic_scan'],
+        location: location || [33.6374, 46.4227],
+        duration: duration || 300
+      };
+
+      pythonProcess.stdin.write(JSON.stringify(config));
+      pythonProcess.stdin.end();
+
+      let output = '';
+      let errorOutput = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+
+            // Broadcast detection start
+            broadcast({
+              type: 'advanced_detection_started',
+              data: result
+            });
+
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse detection result' });
+          }
+        } else {
+          res.status(500).json({
+            error: 'Advanced detection failed',
+            details: errorOutput
+          });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start advanced detection" });
+    }
+  });
+
+  // Stop advanced detection
+  app.post("/api/advanced-detection/stop/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'stop', sessionId]);
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          broadcast({
+            type: 'advanced_detection_stopped',
+            data: { sessionId }
+          });
+
+          res.json({ status: 'stopped', sessionId });
+        } else {
+          res.status(500).json({ error: 'Failed to stop detection' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to stop advanced detection" });
+    }
+  });
+
+  // Get advanced detection status
+  app.get("/api/advanced-detection/status", async (req, res) => {
+    try {
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'status']);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse status result' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get detection status' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get detection status" });
+    }
+  });
+
+  // Get real-time alerts
+  app.get("/api/advanced-detection/alerts", async (req, res) => {
+    try {
+      const hours = parseInt(req.query.hours as string) || 24;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'alerts', hours.toString()]);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse alerts result' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get alerts' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get alerts" });
+    }
+  });
+
+  // Get detection results
+  app.get("/api/advanced-detection/results/:sessionId?", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const hours = parseInt(req.query.hours as string) || 24;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const args = sessionId ? ['results', sessionId] : ['results', hours.toString()];
+      const pythonProcess = spawn('python3', [pythonScript, ...args]);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse results' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get detection results' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get detection results" });
+    }
+  });
+
   // Export data
   app.get("/api/export", async (req, res) => {
     try {
       const format = req.query.format as string || 'json';
-      
+
       const data = {
         miners: await storage.getDetectedMiners(),
         activities: await storage.getRecentActivities(),
