@@ -50,10 +50,25 @@ export function getQueryFn(urlOrOptions: string | { url?: string, on401?: string
 
   return async () => {
     try {
-      const response = await apiRequest('GET', url);
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+      });
+
+      if (response.status === 401 && on401 === 'returnNull') {
+        return null;
+      }
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       return await response.json();
     } catch (error) {
-      if (error instanceof Error && error.message.includes('401') && on401 === 'returnNull') {
+      if (on401 === 'returnNull') {
         return null;
       }
       throw error;
