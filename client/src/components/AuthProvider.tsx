@@ -29,7 +29,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     isLoading,
   } = useQuery<SelectUser | undefined, Error>({
     queryKey: ["/api/user"],
-    queryFn: getQueryFn({ on401: "returnNull" }),
+    queryFn: getQueryFn({ url: "/api/user", on401: "returnNull" }),
   });
 
   const loginMutation = useMutation({
@@ -82,7 +82,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       queryClient.setQueryData(["/api/user"], null);
       toast({
         title: "خروج موفق",
-        description: "با موفقیت از سیستم خارج شدید",
+        description: "با موفقیت از سیس��م خارج شدید",
       });
     },
     onError: (error: Error) => {
