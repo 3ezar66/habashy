@@ -9,7 +9,12 @@ export default function Dashboard() {
   return (
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-right">سامانه تشخیص ماینر</h1>
+        <div className="text-right">
+          <h1 className="text-3xl font-bold">سامانه کاشف - نسخه شبح حبشی</h1>
+          <p className="text-sm text-muted-foreground mt-1">
+            اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
+          </p>
+        </div>
         <ScanControls />
       </div>
       
