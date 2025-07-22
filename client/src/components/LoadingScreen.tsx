@@ -12,7 +12,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
 
   const loadingSteps = [
     { text: "آنالیز شبکه‌های بلاک‌چین...", coin: "₿", color: "#f7931a" },
-    { text: "شناسایی ماینرهای بیت‌کوین...", coin: "Ξ", color: "#627eea" },
+    { text: "فعال‌سازی ماژول‌های RF و ارتعاشی...", coin: "📡", color: "#627eea" },
     { text: "��سکن پولهای رمزنگاری شده...", coin: "₳", color: "#0033ad" },
     { text: "تحلیل الگوریتم‌های استخراج...", coin: "⚡", color: "#f2a900" },
     { text: "شناسایی GPU فارم‌ها...", coin: "◊", color: "#00b8a9" },
