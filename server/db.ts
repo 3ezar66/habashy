@@ -6,12 +6,8 @@ import 'dotenv/config';
 
 neonConfig.webSocketConstructor = ws;
 
-if (!process.env.DATABASE_URL) {
-  console.warn("DATABASE_URL not set. Running in development mode without Neon database.");
-  // Export placeholder objects for development
-  export const pool = null;
-  export const db = null;
-} else {
-  export const pool = new Pool({ connectionString: process.env.DATABASE_URL });
-  export const db = drizzle({ client: pool, schema });
-}
+// Use a development database URL if not provided
+const databaseUrl = process.env.DATABASE_URL || 'postgresql://dev:dev@localhost:5432/dev';
+
+export const pool = new Pool({ connectionString: databaseUrl });
+export const db = drizzle({ client: pool, schema });
