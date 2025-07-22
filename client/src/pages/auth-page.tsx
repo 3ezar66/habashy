@@ -9,8 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 export default function AuthPage() {
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("4501145031");
+  const [password, setPassword] = useState("470505");
   const { toast } = useToast();
 
   const handleLogin = async (e: React.FormEvent) => {
