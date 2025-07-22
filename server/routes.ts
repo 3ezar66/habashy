@@ -26,14 +26,23 @@ async function hashPassword(password: string) {
 
 async function initializeDefaultUser() {
   try {
+    console.log("Checking for existing user...");
     const existingUser = await storage.getUserByUsername("4501145031");
+    console.log("Existing user:", existingUser ? "Found" : "Not found");
+
     if (!existingUser) {
+      console.log("Creating default user...");
+      const hashedPassword = await hashPassword("470505");
+      console.log("Password hashed, creating user...");
+
       await storage.createUser({
         username: "4501145031",
-        password: await hashPassword("470505"),
+        password: hashedPassword,
         role: "admin"
       });
       console.log("Default admin user created successfully");
+    } else {
+      console.log("Default user already exists");
     }
   } catch (error) {
     console.error("Error creating default user:", error);
