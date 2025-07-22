@@ -29,9 +29,12 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold">
-            ورود به ��امانه تشخیص ماینر
+          <CardTitle className="text-2xl font-bold mb-2">
+            سامانه کاشف - نسخه شبح حبشی
           </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
+          </p>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleLogin} className="space-y-4">
