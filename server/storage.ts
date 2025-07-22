@@ -392,14 +392,30 @@ export class DatabaseStorage implements IStorage {
 
 export class MemStorage implements IStorage {
     sessionStore: any;
+    private users: Map<number, User> = new Map();
+    private usersByUsername: Map<string, User> = new Map();
+    private nextUserId = 1;
+
     async getUser(id: number): Promise<User | undefined> {
-        return undefined;
+        return this.users.get(id);
     }
     async getUserByUsername(username: string): Promise<User | undefined> {
-        return undefined;
+        return this.usersByUsername.get(username);
     }
-    async createUser(user: InsertUser): Promise<User> {
-        return user as User;
+    async createUser(insertUser: InsertUser): Promise<User> {
+        const user: User = {
+            id: this.nextUserId++,
+            username: insertUser.username,
+            password: insertUser.password,
+            email: insertUser.email || null,
+            role: insertUser.role || 'operator',
+            createdAt: new Date().toISOString(),
+            lastLogin: null,
+            isActive: insertUser.isActive !== false
+        };
+        this.users.set(user.id, user);
+        this.usersByUsername.set(user.username, user);
+        return user;
     }
     async getDetectedMiners(): Promise<DetectedMiner[]> {
         return [];
