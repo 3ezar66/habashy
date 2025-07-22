@@ -37,9 +37,26 @@ export async function apiRequest(
 }
 
 // Query function helper for React Query
-export function getQueryFn(url: string) {
+export function getQueryFn(urlOrOptions: string | { url?: string, on401?: string }) {
+  let url: string;
+  let on401: string | undefined;
+
+  if (typeof urlOrOptions === 'string') {
+    url = urlOrOptions;
+  } else {
+    url = urlOrOptions.url || '';
+    on401 = urlOrOptions.on401;
+  }
+
   return async () => {
-    const response = await apiRequest('GET', url);
-    return await response.json();
+    try {
+      const response = await apiRequest('GET', url);
+      return await response.json();
+    } catch (error) {
+      if (error instanceof Error && error.message.includes('401') && on401 === 'returnNull') {
+        return null;
+      }
+      throw error;
+    }
   };
 }
