@@ -10,8 +10,8 @@ export default function Dashboard() {
     <div className="container mx-auto p-6 space-y-6">
       <div className="flex items-center justify-between">
         <div className="text-right">
-          <h1 className="text-3xl font-bold">سامانه کاشف - نسخه شبح حبشی</h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <h1 className="text-3xl font-bold" style={{ fontFamily: "'Aref Ruqaa Ink', serif" }}>سامانه کاشف - نسخه شبح حبشی 4</h1>
+          <p className="text-sm text-muted-foreground mt-1" style={{ fontFamily: "'Noto Naskh Arabic', serif" }}>
             اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
           </p>
         </div>
