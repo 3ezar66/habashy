@@ -2,6 +2,273 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Persian/Arabic fonts */
+@import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa+Ink:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
+
+/* Advanced animations for detection components */
+@keyframes scanner-sweep {
+  0% { transform: translateX(-100%); }
+  100% { transform: translateX(400%); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% {
+    box-shadow: 0 0 5px currentColor;
+    opacity: 1;
+  }
+  50% {
+    box-shadow: 0 0 20px currentColor, 0 0 30px currentColor;
+    opacity: 0.8;
+  }
+}
+
+@keyframes radar-sweep {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+@keyframes detection-wave {
+  0% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  100% {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+@keyframes float-up {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 0;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-200px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+/* Scanner animation */
+.scanner-animation {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.4),
+    transparent
+  );
+  animation: scanner-sweep 2s ease-in-out infinite;
+}
+
+/* Pulse glow effect */
+.pulse-glow {
+  animation: pulse-glow 2s ease-in-out infinite;
+}
+
+/* Radar sweep animation */
+.radar-sweep {
+  animation: radar-sweep 4s linear infinite;
+}
+
+/* Detection wave effect */
+.detection-wave {
+  animation: detection-wave 2s ease-out infinite;
+}
+
+/* Floating particles */
+.float-particle {
+  animation: float-up 6s ease-out infinite;
+}
+
+/* Shimmer effect */
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s ease-in-out infinite;
+}
+
+/* Advanced card styles */
+.persian-card {
+  @apply bg-white/80 backdrop-blur-sm border border-gray-200/60 shadow-lg;
+  transition: all 0.3s ease;
+}
+
+.persian-card:hover {
+  @apply shadow-xl border-blue-300/60;
+  transform: translateY(-2px);
+}
+
+/* Stats card enhancements */
+.stats-card {
+  @apply bg-gradient-to-br from-white to-gray-50 border border-gray-200;
+  transition: all 0.3s ease;
+}
+
+.stats-card:hover {
+  @apply shadow-lg border-blue-300;
+  transform: translateY(-1px);
+}
+
+/* Persian number styling */
+.persian-numbers {
+  font-family: 'Noto Naskh Arabic', serif;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Focus ring utility */
+.focus-ring {
+  @apply focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:outline-none;
+}
+
+/* Persian color palette */
+.text-persian-primary { color: #1e40af; }
+.text-persian-secondary { color: #0891b2; }
+.text-persian-success { color: #059669; }
+.text-persian-warning { color: #d97706; }
+.text-persian-error { color: #dc2626; }
+
+.bg-persian-primary { background-color: #1e40af; }
+.bg-persian-secondary { background-color: #0891b2; }
+.bg-persian-success { background-color: #059669; }
+.bg-persian-warning { background-color: #d97706; }
+.bg-persian-error { background-color: #dc2626; }
+
+.bg-persian-surface { background-color: #f8fafc; }
+.bg-persian-surface-variant { background-color: #e2e8f0; }
+
+/* Detection indicator styles */
+.detection-indicator {
+  position: relative;
+  overflow: hidden;
+}
+
+.detection-indicator::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.3),
+    transparent
+  );
+  animation: scanner-sweep 3s ease-in-out infinite;
+}
+
+/* Threat level indicators */
+.threat-critical {
+  @apply bg-red-500 text-white;
+  box-shadow: 0 0 20px rgba(239, 68, 68, 0.4);
+  animation: pulse-glow 1.5s ease-in-out infinite;
+}
+
+.threat-high {
+  @apply bg-orange-500 text-white;
+  box-shadow: 0 0 15px rgba(249, 115, 22, 0.4);
+}
+
+.threat-medium {
+  @apply bg-yellow-500 text-black;
+  box-shadow: 0 0 10px rgba(234, 179, 8, 0.4);
+}
+
+.threat-low {
+  @apply bg-green-500 text-white;
+  box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+}
+
+/* Map marker animations */
+.map-marker {
+  position: relative;
+}
+
+.map-marker::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100%;
+  height: 100%;
+  border: 2px solid currentColor;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  animation: detection-wave 2s ease-out infinite;
+}
+
+/* Loading states */
+.loading-dots {
+  display: inline-block;
+}
+
+.loading-dots::after {
+  content: '...';
+  animation: loading-dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes loading-dots {
+  0%, 20% { content: '.'; }
+  40% { content: '..'; }
+  60% { content: '...'; }
+  80%, 100% { content: ''; }
+}
+
+/* Glassmorphism effects */
+.glass {
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  background: rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* High-tech UI elements */
+.tech-border {
+  position: relative;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.tech-border::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(59, 130, 246, 0.1),
+    transparent
+  );
+  animation: shimmer 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* Responsive utilities for RTL */
+[dir="rtl"] .space-x-reverse > :not([hidden]) ~ :not([hidden]) {
+  --tw-space-x-reverse: 1;
+}
+
 @layer base {
   :root {
     --background: 224 71% 4%;
