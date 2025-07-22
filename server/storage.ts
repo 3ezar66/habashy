@@ -112,6 +112,16 @@ const PostgresSessionStore = connectPg(session);
 const db = new Database('miners.db');
 
 db.exec(`
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  password TEXT NOT NULL,
+  email TEXT,
+  role TEXT DEFAULT 'operator',
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  last_login DATETIME,
+  is_active BOOLEAN DEFAULT 1
+);
 CREATE TABLE IF NOT EXISTS miners (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ip TEXT,
