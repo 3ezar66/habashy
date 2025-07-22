@@ -7,6 +7,7 @@ import RecentActivity from "@/components/RecentActivity";
 import ScanControls from "@/components/ScanControls";
 import AdvancedDetectionCenter from "@/components/AdvancedDetectionCenter";
 import Advanced3DMap from "@/components/Advanced3DMap";
+import RealTimeAlerts from "@/components/RealTimeAlerts";
 import {
   Radar,
   Map,
@@ -76,7 +77,7 @@ export default function Dashboard() {
               <CardHeader>
                 <CardTitle className="flex items-center text-blue-800">
                   <Map className="ml-2 h-5 w-5" />
-                  نقشه تعاملی کلاسیک
+                  نقشه تعاملی کلا��یک
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -172,7 +173,7 @@ export default function Dashboard() {
                     <span className="font-semibold persian-numbers text-green-600">94.2%</span>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-muted-foreground">زمان آخرین اسکن</span>
+                    <span className="text-sm text-muted-foreground">زمان آخر��ن اسکن</span>
                     <span className="font-semibold text-xs">۵ دقیقه پیش</span>
                   </div>
                 </div>
@@ -181,6 +182,9 @@ export default function Dashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Real-time Alerts Component */}
+      <RealTimeAlerts />
     </div>
   );
 }
