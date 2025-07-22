@@ -105,7 +105,7 @@ export interface IStorage {
   }>;
 }
 
-const PostgresSessionStore = connectPg(session);
+const MemorySessionStore = MemoryStore(session);
 
 // حذف mockها و افزودن اتصال واقعی به SQLite
 const db = new Database('miners.db');
