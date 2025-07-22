@@ -100,9 +100,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: user ?? null,
         isLoading,
         error,
-        loginMutation,
-        logoutMutation,
-        registerMutation,
+        login: loginMutation,
+        logout: logoutMutation,
+        register: registerMutation,
       }}
     >
       {children}
