@@ -29,10 +29,10 @@ export default function AuthPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <CardTitle className="text-2xl font-bold mb-2">
-            سامانه کاشف - نسخه شبح حبشی
+          <CardTitle className="text-2xl font-bold mb-2" style={{ font: "700 30px/32px 'Aref Ruqaa Ink', serif" }}>
+            سامانه کاشف - نسخه شبح حبشی 4
           </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground" style={{ font: "600 14px/20px 'Noto Naskh Arabic', serif" }}>
             اسکن، جستجو، شناسایی، کشف و رصد دستگاه‌های استخراج رمزارز دیجیتال غیرمجاز
           </p>
         </CardHeader>
