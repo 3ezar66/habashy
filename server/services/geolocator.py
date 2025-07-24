@@ -3,7 +3,7 @@
 
 import json
 import sys
-import requests
+# import requests  # Not available
 import time
 
 def geolocate_device(ip_address):
