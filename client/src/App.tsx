@@ -11,6 +11,13 @@ import Dashboard from "@/pages/dashboard";
 import AuthPage from "@/pages/auth-page";
 import NotFound from "@/pages/not-found";
 
+// Add error handling for Vite HMR
+if (import.meta.hot) {
+  import.meta.hot.on('vite:error', (payload) => {
+    console.warn('Vite HMR error:', payload);
+  });
+}
+
 function Router() {
   return (
     <Switch>
