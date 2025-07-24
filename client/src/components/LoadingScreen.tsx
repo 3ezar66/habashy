@@ -34,21 +34,21 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   useEffect(() => {
     const interval = setInterval(() => {
       setProgress(prev => {
-        const newProgress = prev + (100 / (7 * 60)); // 7 seconds total
+        const newProgress = prev + (100 / (3 * 60)); // 3 seconds total (faster)
         if (newProgress >= 100) {
           clearInterval(interval);
-          setTimeout(onComplete, 500);
+          setTimeout(onComplete, 300);
           return 100;
         }
-        
+
         const stepIndex = Math.floor((newProgress / 100) * loadingSteps.length);
         if (stepIndex !== currentStep && stepIndex < loadingSteps.length) {
           setCurrentStep(stepIndex);
         }
-        
+
         return newProgress;
       });
-    }, 16); // 60fps
+    }, 50); // Slower update rate to reduce CPU usage
 
     return () => clearInterval(interval);
   }, [onComplete, currentStep, loadingSteps.length]);
