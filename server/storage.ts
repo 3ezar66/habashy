@@ -671,16 +671,39 @@ export class DatabaseStorage implements IStorage {
       acousticSignatures: number;
       thermalAnomalies: number;
   }> {
-      return {
-          totalDevices: 0,
-          confirmedMiners: 0,
-          suspiciousDevices: 0,
-          totalPowerConsumption: 0,
-          networkHealth: 0,
-          rfSignalsDetected: 0,
-          acousticSignatures: 0,
-          thermalAnomalies: 0,
-      };
+      try {
+          const totalDevices = db.prepare('SELECT COUNT(*) as cnt FROM miners').get()?.cnt || 0;
+          const confirmedMiners = db.prepare('SELECT COUNT(*) as cnt FROM miners WHERE suspicion_score >= 80').get()?.cnt || 0;
+          const suspiciousDevices = db.prepare('SELECT COUNT(*) as cnt FROM miners WHERE suspicion_score >= 50 AND suspicion_score < 80').get()?.cnt || 0;
+          const totalPowerConsumption = db.prepare('SELECT SUM(power_consumption) as sum FROM miners WHERE power_consumption IS NOT NULL').get()?.sum || 0;
+
+          // Calculate network health based on active miners vs total
+          const activeMiners = db.prepare('SELECT COUNT(*) as cnt FROM miners WHERE is_active = 1').get()?.cnt || 0;
+          const networkHealth = totalDevices > 0 ? Math.round((activeMiners / totalDevices) * 100) : 100;
+
+          return {
+              totalDevices,
+              confirmedMiners,
+              suspiciousDevices,
+              totalPowerConsumption,
+              networkHealth,
+              rfSignalsDetected: 0, // TODO: implement RF signals table
+              acousticSignatures: 0, // TODO: implement acoustic signatures table
+              thermalAnomalies: 0, // TODO: implement thermal signatures table
+          };
+      } catch (error) {
+          console.error('Error getting statistics:', error);
+          return {
+              totalDevices: 0,
+              confirmedMiners: 0,
+              suspiciousDevices: 0,
+              totalPowerConsumption: 0,
+              networkHealth: 0,
+              rfSignalsDetected: 0,
+              acousticSignatures: 0,
+              thermalAnomalies: 0,
+          };
+      }
   }
 }
 
