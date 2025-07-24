@@ -258,27 +258,185 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDetectedMiners(): Promise<DetectedMiner[]> {
-    return [];
+    try {
+      const miners = db.prepare('SELECT * FROM miners ORDER BY detection_time DESC').all();
+      return miners.map(miner => ({
+        ...miner,
+        isActive: miner.is_active === 1,
+        detectionTime: miner.detection_time,
+        lastUpdate: miner.last_update,
+        powerConsumption: miner.power_consumption,
+        hashRate: miner.hash_rate,
+        responseTime: miner.response_time,
+        suspicionScore: miner.suspicion_score,
+        deviceType: miner.device_type,
+        openPorts: miner.open_ports,
+        ipAddress: miner.ip,
+        macAddress: miner.mac
+      })) as DetectedMiner[];
+    } catch (error) {
+      console.error('Error getting detected miners:', error);
+      return [];
+    }
   }
 
   async getMinerById(id: number): Promise<DetectedMiner | undefined> {
-    return undefined;
+    try {
+      const miner = db.prepare('SELECT * FROM miners WHERE id = ?').get(id);
+      if (!miner) return undefined;
+
+      return {
+        ...miner,
+        isActive: miner.is_active === 1,
+        detectionTime: miner.detection_time,
+        lastUpdate: miner.last_update,
+        powerConsumption: miner.power_consumption,
+        hashRate: miner.hash_rate,
+        responseTime: miner.response_time,
+        suspicionScore: miner.suspicion_score,
+        deviceType: miner.device_type,
+        openPorts: miner.open_ports,
+        ipAddress: miner.ip,
+        macAddress: miner.mac
+      } as DetectedMiner;
+    } catch (error) {
+      console.error('Error getting miner by id:', error);
+      return undefined;
+    }
   }
 
   async createMiner(insertMiner: InsertMiner): Promise<DetectedMiner> {
-    return insertMiner as DetectedMiner;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO miners (ip, mac, device_type, open_ports, suspicion_score, city, country, latitude, longitude, hostname, status, power_consumption, hash_rate, response_time, is_active, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
+        insertMiner.ipAddress,
+        insertMiner.macAddress,
+        insertMiner.deviceType || 'unknown',
+        insertMiner.openPorts,
+        insertMiner.suspicionScore || 50,
+        insertMiner.city,
+        insertMiner.country,
+        insertMiner.latitude,
+        insertMiner.longitude,
+        insertMiner.hostname,
+        insertMiner.status || 'active',
+        insertMiner.powerConsumption,
+        insertMiner.hashRate,
+        insertMiner.responseTime,
+        insertMiner.isActive !== false ? 1 : 0,
+        insertMiner.notes
+      );
+
+      const newMiner = db.prepare('SELECT * FROM miners WHERE id = ?').get(result.lastInsertRowid);
+      return {
+        ...newMiner,
+        isActive: newMiner.is_active === 1,
+        detectionTime: newMiner.detection_time,
+        lastUpdate: newMiner.last_update,
+        powerConsumption: newMiner.power_consumption,
+        hashRate: newMiner.hash_rate,
+        responseTime: newMiner.response_time,
+        suspicionScore: newMiner.suspicion_score,
+        deviceType: newMiner.device_type,
+        openPorts: newMiner.open_ports,
+        ipAddress: newMiner.ip,
+        macAddress: newMiner.mac
+      } as DetectedMiner;
+    } catch (error) {
+      console.error('Error creating miner:', error);
+      throw error;
+    }
   }
 
   async updateMiner(id: number, updates: Partial<InsertMiner>): Promise<DetectedMiner | undefined> {
-    return undefined;
+    try {
+      const setParts = [];
+      const values = [];
+
+      if (updates.ipAddress !== undefined) { setParts.push('ip = ?'); values.push(updates.ipAddress); }
+      if (updates.macAddress !== undefined) { setParts.push('mac = ?'); values.push(updates.macAddress); }
+      if (updates.deviceType !== undefined) { setParts.push('device_type = ?'); values.push(updates.deviceType); }
+      if (updates.openPorts !== undefined) { setParts.push('open_ports = ?'); values.push(updates.openPorts); }
+      if (updates.suspicionScore !== undefined) { setParts.push('suspicion_score = ?'); values.push(updates.suspicionScore); }
+      if (updates.city !== undefined) { setParts.push('city = ?'); values.push(updates.city); }
+      if (updates.country !== undefined) { setParts.push('country = ?'); values.push(updates.country); }
+      if (updates.latitude !== undefined) { setParts.push('latitude = ?'); values.push(updates.latitude); }
+      if (updates.longitude !== undefined) { setParts.push('longitude = ?'); values.push(updates.longitude); }
+      if (updates.hostname !== undefined) { setParts.push('hostname = ?'); values.push(updates.hostname); }
+      if (updates.status !== undefined) { setParts.push('status = ?'); values.push(updates.status); }
+      if (updates.powerConsumption !== undefined) { setParts.push('power_consumption = ?'); values.push(updates.powerConsumption); }
+      if (updates.hashRate !== undefined) { setParts.push('hash_rate = ?'); values.push(updates.hashRate); }
+      if (updates.responseTime !== undefined) { setParts.push('response_time = ?'); values.push(updates.responseTime); }
+      if (updates.isActive !== undefined) { setParts.push('is_active = ?'); values.push(updates.isActive ? 1 : 0); }
+      if (updates.notes !== undefined) { setParts.push('notes = ?'); values.push(updates.notes); }
+
+      setParts.push('last_update = CURRENT_TIMESTAMP');
+      values.push(id);
+
+      const stmt = db.prepare(`UPDATE miners SET ${setParts.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
+
+      return this.getMinerById(id);
+    } catch (error) {
+      console.error('Error updating miner:', error);
+      return undefined;
+    }
   }
 
   async getActiveMiners(): Promise<DetectedMiner[]> {
-    return [];
+    try {
+      const miners = db.prepare('SELECT * FROM miners WHERE is_active = 1 ORDER BY detection_time DESC').all();
+      return miners.map(miner => ({
+        ...miner,
+        isActive: miner.is_active === 1,
+        detectionTime: miner.detection_time,
+        lastUpdate: miner.last_update,
+        powerConsumption: miner.power_consumption,
+        hashRate: miner.hash_rate,
+        responseTime: miner.response_time,
+        suspicionScore: miner.suspicion_score,
+        deviceType: miner.device_type,
+        openPorts: miner.open_ports,
+        ipAddress: miner.ip,
+        macAddress: miner.mac
+      })) as DetectedMiner[];
+    } catch (error) {
+      console.error('Error getting active miners:', error);
+      return [];
+    }
   }
 
   async getMinersInArea(bounds: { north: number; south: number; east: number; west: number }): Promise<DetectedMiner[]> {
-    return [];
+    try {
+      const miners = db.prepare(`
+        SELECT * FROM miners
+        WHERE latitude BETWEEN ? AND ?
+        AND longitude BETWEEN ? AND ?
+        ORDER BY detection_time DESC
+      `).all(bounds.south, bounds.north, bounds.west, bounds.east);
+
+      return miners.map(miner => ({
+        ...miner,
+        isActive: miner.is_active === 1,
+        detectionTime: miner.detection_time,
+        lastUpdate: miner.last_update,
+        powerConsumption: miner.power_consumption,
+        hashRate: miner.hash_rate,
+        responseTime: miner.response_time,
+        suspicionScore: miner.suspicion_score,
+        deviceType: miner.device_type,
+        openPorts: miner.open_ports,
+        ipAddress: miner.ip,
+        macAddress: miner.mac
+      })) as DetectedMiner[];
+    } catch (error) {
+      console.error('Error getting miners in area:', error);
+      return [];
+    }
   }
 
   async getNetworkConnections(): Promise<NetworkConnection[]> {
