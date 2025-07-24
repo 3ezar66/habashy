@@ -72,7 +72,7 @@ class MinerDetector:
             return []
 
     def scan_device(self, ip, ports, timeout):
-        """اسکن یک دستگ��ه مشخص"""
+        """اسکن یک دستگاه مشخص"""
         try:
             device_info = {
                 'ip_address': ip,
@@ -147,7 +147,7 @@ class MinerDetector:
         return open_ports
 
     def analyze_service(self, ip, port, timeout):
-        """تحلیل سرویس در حال اجرا روی پورت"""
+        """تحلیل سرویس در حال اجر�� روی پورت"""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
@@ -308,24 +308,17 @@ class MinerDetector:
 
     def get_geolocation(self, ip):
         """دریافت موقعیت جغرافیایی IP"""
-        try:
-            # استفاده از سرویس ip-api.com
-            response = requests.get(f"http://ip-api.com/json/{ip}", timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                if data['status'] == 'success':
-                    return {
-                        'ip-api': {
-                            'lat': data.get('lat'),
-                            'lon': data.get('lon'),
-                            'city': data.get('city'),
-                            'country': data.get('country'),
-                            'isp': data.get('isp')
-                        }
-                    }
-        except:
-            pass
-            
+        # بدون دسترسی به اینترنت، مختصات ایلام را برمی‌گردانیم
+        if ip.startswith('192.168.') or ip.startswith('10.') or ip.startswith('172.'):
+            return {
+                'local-network': {
+                    'lat': 33.6374,
+                    'lon': 46.4227,
+                    'city': 'ایلام',
+                    'country': 'ایران',
+                    'isp': 'شبکه محلی'
+                }
+            }
         return None
 
 def main():
