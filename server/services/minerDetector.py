@@ -8,7 +8,7 @@ import threading
 import time
 import subprocess
 import ipaddress
-import requests
+# import requests  # Not available in this environment
 from concurrent.futures import ThreadPoolExecutor, as_completed
 import hashlib
 import random
@@ -72,7 +72,7 @@ class MinerDetector:
             return []
 
     def scan_device(self, ip, ports, timeout):
-        """اسکن یک دستگاه مشخص"""
+        """اسکن یک دستگ��ه مشخص"""
         try:
             device_info = {
                 'ip_address': ip,
@@ -124,7 +124,7 @@ class MinerDetector:
             return device_info
             
         except Exception as e:
-            print(f"خطا در اسک�� دستگاه {ip}: {e}")
+            print(f"خطا در اسکن دستگاه {ip}: {e}")
             return None
 
     def port_scan(self, ip, ports, timeout):
