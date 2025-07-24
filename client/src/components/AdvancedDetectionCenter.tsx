@@ -224,7 +224,7 @@ export default function AdvancedDetectionCenter() {
           prev.map(module => ({
             ...module,
             detectionCount: data.detections_by_method[module.id] || 0,
-            confidence: Math.random() * 100, // Simulate confidence updates
+            confidence: data.confidence_by_method?.[module.id] || 0,
             status: isScanning ? 'scanning' as const : 'inactive' as const
           }))
         );
@@ -539,7 +539,7 @@ export default function AdvancedDetectionCenter() {
 
             <Card>
               <CardHeader>
-                <CardTitle>آمار سطح تهدید</CardTitle>
+                <CardTitle>آمار سطح تهدی��</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
