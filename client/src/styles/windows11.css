@@ -1,0 +1,435 @@
+/* Windows 11 Design System */
+
+:root {
+  /* Windows 11 Colors */
+  --win11-accent: #005FB8;
+  --win11-accent-light: #0078D4;
+  --win11-accent-dark: #004A8C;
+  --win11-background: #F3F3F3;
+  --win11-background-alt: #FAFAFA;
+  --win11-surface: #FFFFFF;
+  --win11-surface-alt: #F9F9F9;
+  --win11-card: #FFFFFF;
+  --win11-border: #E5E5E5;
+  --win11-divider: #EDEDED;
+  
+  /* Text Colors */
+  --win11-text-primary: #323130;
+  --win11-text-secondary: #605E5C;
+  --win11-text-tertiary: #8A8886;
+  --win11-text-accent: #005FB8;
+  
+  /* Status Colors */
+  --win11-success: #107C10;
+  --win11-warning: #FF8C00;
+  --win11-error: #D13438;
+  --win11-info: #0078D4;
+  
+  /* Dark Mode */
+  --win11-dark-background: #202020;
+  --win11-dark-surface: #2D2D2D;
+  --win11-dark-card: #323232;
+  --win11-dark-border: #404040;
+  --win11-dark-text: #FFFFFF;
+  --win11-dark-text-secondary: #CCCCCC;
+  
+  /* Shadows */
+  --win11-shadow-low: 0 1px 2px rgba(0, 0, 0, 0.1);
+  --win11-shadow-medium: 0 2px 4px rgba(0, 0, 0, 0.12);
+  --win11-shadow-high: 0 4px 8px rgba(0, 0, 0, 0.16);
+  --win11-shadow-elevated: 0 8px 16px rgba(0, 0, 0, 0.2);
+  
+  /* Border Radius */
+  --win11-radius-small: 4px;
+  --win11-radius-medium: 8px;
+  --win11-radius-large: 12px;
+  --win11-radius-xl: 16px;
+  
+  /* Typography */
+  --win11-font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --win11-font-size-xs: 11px;
+  --win11-font-size-sm: 12px;
+  --win11-font-size-md: 14px;
+  --win11-font-size-lg: 16px;
+  --win11-font-size-xl: 20px;
+  --win11-font-size-2xl: 24px;
+  --win11-font-size-3xl: 32px;
+}
+
+/* Windows 11 Base Styles */
+.win11-app {
+  font-family: var(--win11-font-family);
+  background: var(--win11-background);
+  color: var(--win11-text-primary);
+  direction: rtl;
+  min-height: 100vh;
+}
+
+/* Windows 11 Window Frame */
+.win11-window {
+  background: var(--win11-surface);
+  border: 1px solid var(--win11-border);
+  border-radius: var(--win11-radius-large);
+  box-shadow: var(--win11-shadow-elevated);
+  overflow: hidden;
+}
+
+/* Windows 11 Title Bar */
+.win11-titlebar {
+  height: 32px;
+  background: var(--win11-surface);
+  border-bottom: 1px solid var(--win11-border);
+  display: flex;
+  align-items: center;
+  padding: 0 16px;
+  user-select: none;
+  -webkit-app-region: drag;
+}
+
+.win11-titlebar-title {
+  font-size: var(--win11-font-size-sm);
+  font-weight: 400;
+  color: var(--win11-text-primary);
+  flex: 1;
+  text-align: center;
+}
+
+.win11-titlebar-controls {
+  display: flex;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
+.win11-titlebar-button {
+  width: 46px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  transition: background-color 0.15s ease;
+}
+
+.win11-titlebar-button:hover {
+  background-color: rgba(0, 0, 0, 0.05);
+}
+
+.win11-titlebar-button.close:hover {
+  background-color: #E81123;
+  color: white;
+}
+
+/* Windows 11 Navigation */
+.win11-nav {
+  background: var(--win11-surface);
+  border-right: 1px solid var(--win11-border);
+  padding: 16px 0;
+  width: 280px;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.win11-nav-item {
+  display: flex;
+  align-items: center;
+  padding: 8px 16px;
+  margin: 2px 8px;
+  border-radius: var(--win11-radius-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  color: var(--win11-text-primary);
+  font-size: var(--win11-font-size-md);
+  border: none;
+  background: transparent;
+  width: calc(100% - 16px);
+}
+
+.win11-nav-item:hover {
+  background: rgba(0, 95, 184, 0.08);
+}
+
+.win11-nav-item.active {
+  background: var(--win11-accent);
+  color: white;
+}
+
+.win11-nav-item-icon {
+  margin-left: 12px;
+  font-size: 16px;
+  width: 16px;
+  text-align: center;
+}
+
+/* Windows 11 Cards */
+.win11-card {
+  background: var(--win11-card);
+  border: 1px solid var(--win11-border);
+  border-radius: var(--win11-radius-large);
+  box-shadow: var(--win11-shadow-low);
+  transition: box-shadow 0.15s ease;
+}
+
+.win11-card:hover {
+  box-shadow: var(--win11-shadow-medium);
+}
+
+.win11-card-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid var(--win11-divider);
+}
+
+.win11-card-title {
+  font-size: var(--win11-font-size-lg);
+  font-weight: 600;
+  color: var(--win11-text-primary);
+  margin: 0;
+}
+
+.win11-card-subtitle {
+  font-size: var(--win11-font-size-sm);
+  color: var(--win11-text-secondary);
+  margin: 4px 0 0 0;
+}
+
+.win11-card-content {
+  padding: 20px;
+}
+
+/* Windows 11 Buttons */
+.win11-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 16px;
+  font-family: var(--win11-font-family);
+  font-size: var(--win11-font-size-md);
+  font-weight: 400;
+  border: 1px solid var(--win11-border);
+  border-radius: var(--win11-radius-medium);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-decoration: none;
+  min-height: 32px;
+}
+
+.win11-button-primary {
+  background: var(--win11-accent);
+  color: white;
+  border-color: var(--win11-accent);
+}
+
+.win11-button-primary:hover {
+  background: var(--win11-accent-dark);
+  border-color: var(--win11-accent-dark);
+}
+
+.win11-button-secondary {
+  background: var(--win11-surface);
+  color: var(--win11-text-primary);
+}
+
+.win11-button-secondary:hover {
+  background: var(--win11-surface-alt);
+}
+
+.win11-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Windows 11 Inputs */
+.win11-input {
+  width: 100%;
+  padding: 8px 12px;
+  font-family: var(--win11-font-family);
+  font-size: var(--win11-font-size-md);
+  background: var(--win11-surface);
+  border: 1px solid var(--win11-border);
+  border-radius: var(--win11-radius-medium);
+  transition: border-color 0.15s ease;
+  outline: none;
+}
+
+.win11-input:focus {
+  border-color: var(--win11-accent);
+  box-shadow: 0 0 0 1px var(--win11-accent);
+}
+
+/* Windows 11 Status Indicators */
+.win11-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  border-radius: var(--win11-radius-small);
+  font-size: var(--win11-font-size-xs);
+  font-weight: 500;
+}
+
+.win11-status-success {
+  background: rgba(16, 124, 16, 0.1);
+  color: var(--win11-success);
+}
+
+.win11-status-warning {
+  background: rgba(255, 140, 0, 0.1);
+  color: var(--win11-warning);
+}
+
+.win11-status-error {
+  background: rgba(209, 52, 56, 0.1);
+  color: var(--win11-error);
+}
+
+.win11-status-info {
+  background: rgba(0, 120, 212, 0.1);
+  color: var(--win11-info);
+}
+
+/* Windows 11 Progress */
+.win11-progress {
+  width: 100%;
+  height: 4px;
+  background: var(--win11-border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.win11-progress-bar {
+  height: 100%;
+  background: var(--win11-accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+/* Windows 11 Acrylic Effect */
+.win11-acrylic {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Persian/Arabic Text Support */
+.win11-app[dir="rtl"] {
+  text-align: right;
+}
+
+.win11-app[dir="rtl"] .win11-nav-item-icon {
+  margin-left: 0;
+  margin-right: 12px;
+}
+
+/* Animations */
+@keyframes win11-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes win11-scale-in {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.win11-animate-in {
+  animation: win11-fade-in 0.3s ease;
+}
+
+.win11-animate-scale {
+  animation: win11-scale-in 0.2s ease;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .win11-nav {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--win11-border);
+  }
+  
+  .win11-window {
+    border-radius: 0;
+    height: 100vh;
+  }
+}
+
+/* Windows 11 Tables */
+.win11-table {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--win11-surface);
+  border-radius: var(--win11-radius-large);
+  overflow: hidden;
+  box-shadow: var(--win11-shadow-low);
+}
+
+.win11-table th {
+  background: var(--win11-surface-alt);
+  padding: 12px 16px;
+  text-align: right;
+  font-weight: 600;
+  font-size: var(--win11-font-size-sm);
+  color: var(--win11-text-secondary);
+  border-bottom: 1px solid var(--win11-divider);
+}
+
+.win11-table td {
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--win11-divider);
+  font-size: var(--win11-font-size-md);
+}
+
+.win11-table tr:hover {
+  background: rgba(0, 95, 184, 0.04);
+}
+
+/* Windows 11 Toggle Switch */
+.win11-toggle {
+  position: relative;
+  display: inline-block;
+  width: 40px;
+  height: 20px;
+}
+
+.win11-toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.win11-toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: var(--win11-border);
+  transition: 0.2s;
+  border-radius: 20px;
+}
+
+.win11-toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 16px;
+  width: 16px;
+  right: 2px;
+  bottom: 2px;
+  background-color: white;
+  transition: 0.2s;
+  border-radius: 50%;
+}
+
+.win11-toggle input:checked + .win11-toggle-slider {
+  background-color: var(--win11-accent);
+}
+
+.win11-toggle input:checked + .win11-toggle-slider:before {
+  transform: translateX(-20px);
+}
