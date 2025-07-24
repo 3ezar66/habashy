@@ -440,15 +440,93 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getNetworkConnections(): Promise<NetworkConnection[]> {
-    return [];
+    try {
+      // Create network_connections table if it doesn't exist
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS network_connections (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          local_address TEXT,
+          local_port INTEGER,
+          remote_address TEXT,
+          remote_port INTEGER,
+          protocol TEXT,
+          status TEXT,
+          process_name TEXT,
+          miner_id INTEGER,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+          FOREIGN KEY (miner_id) REFERENCES miners (id)
+        )
+      `);
+
+      const connections = db.prepare('SELECT * FROM network_connections ORDER BY created_at DESC').all();
+      return connections.map(conn => ({
+        ...conn,
+        localAddress: conn.local_address,
+        localPort: conn.local_port,
+        remoteAddress: conn.remote_address,
+        remotePort: conn.remote_port,
+        processName: conn.process_name,
+        minerId: conn.miner_id,
+        createdAt: conn.created_at
+      })) as NetworkConnection[];
+    } catch (error) {
+      console.error('Error getting network connections:', error);
+      return [];
+    }
   }
 
   async createConnection(insertConnection: InsertConnection): Promise<NetworkConnection> {
-    return insertConnection as NetworkConnection;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO network_connections (local_address, local_port, remote_address, remote_port, protocol, status, process_name, miner_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
+        insertConnection.localAddress,
+        insertConnection.localPort,
+        insertConnection.remoteAddress,
+        insertConnection.remotePort,
+        insertConnection.protocol,
+        insertConnection.status,
+        insertConnection.processName,
+        insertConnection.minerId
+      );
+
+      const newConnection = db.prepare('SELECT * FROM network_connections WHERE id = ?').get(result.lastInsertRowid);
+      return {
+        ...newConnection,
+        localAddress: newConnection.local_address,
+        localPort: newConnection.local_port,
+        remoteAddress: newConnection.remote_address,
+        remotePort: newConnection.remote_port,
+        processName: newConnection.process_name,
+        minerId: newConnection.miner_id,
+        createdAt: newConnection.created_at
+      } as NetworkConnection;
+    } catch (error) {
+      console.error('Error creating network connection:', error);
+      throw error;
+    }
   }
 
   async getConnectionsByMiner(minerId: number): Promise<NetworkConnection[]> {
-    return [];
+    try {
+      const connections = db.prepare('SELECT * FROM network_connections WHERE miner_id = ? ORDER BY created_at DESC').all(minerId);
+      return connections.map(conn => ({
+        ...conn,
+        localAddress: conn.local_address,
+        localPort: conn.local_port,
+        remoteAddress: conn.remote_address,
+        remotePort: conn.remote_port,
+        processName: conn.process_name,
+        minerId: conn.miner_id,
+        createdAt: conn.created_at
+      })) as NetworkConnection[];
+    } catch (error) {
+      console.error('Error getting connections by miner:', error);
+      return [];
+    }
   }
 
   async getScanSessions(): Promise<ScanSession[]> {
