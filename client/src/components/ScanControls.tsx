@@ -64,7 +64,7 @@ export default function ScanControls() {
     } catch (error) {
       setScanStatus('خطا در اسکن جامع');
       toast({
-        title: "خطا د�� اسکن جامع",
+        title: "خطا در اسکن جامع",
         description: error instanceof Error ? error.message : 'خطای نامشخص',
         variant: 'destructive',
       });
@@ -139,7 +139,7 @@ export default function ScanControls() {
 
     toast({
       title: "مکان‌یابی شروع شد",
-      description: "در حال مکان‌یابی دستگاه‌های شناسایی شده",
+      description: "در حال مکان‌یابی دستگاه‌های شناسایی ش��ه",
     });
   };
 
@@ -165,7 +165,7 @@ export default function ScanControls() {
         description: "تمام ماژول‌های تشخیص چندوجهی فعال شدند",
       });
 
-      // Simulate progress
+      // Monitor scan progress
       const progressInterval = setInterval(() => {
         setScanProgress(prev => {
           if (prev >= 100) {
@@ -180,7 +180,7 @@ export default function ScanControls() {
       setScanStatus('خطا در تشخیص پیشرفته');
       toast({
         title: "خطا در تشخیص پیشرفته",
-        description: error instanceof Error ? error.message : 'خطای نامشخص',
+        description: error instanceof Error ? error.message : '��طای نامشخص',
         variant: 'destructive',
       });
     } finally {
@@ -273,7 +273,7 @@ export default function ScanControls() {
       <CardHeader>
         <CardTitle className="flex items-center text-lg">
           <SearchCheck className="ml-2 h-5 w-5 text-primary" />
-          کنترل‌های اسکن و شناسایی
+          کنترل‌های اسکن و شناسا��ی
         </CardTitle>
       </CardHeader>
       
