@@ -69,77 +69,50 @@ export default function AdvancedAnalytics() {
     return () => clearInterval(interval);
   }, [selectedTimeframe]);
 
-  const generateAnalyticsData = () => {
+  const loadRealAnalyticsData = async () => {
     setLoading(true);
-    
-    setTimeout(() => {
+
+    try {
+      const [minersResponse, statsResponse, activitiesResponse] = await Promise.all([
+        fetch('/api/miners'),
+        fetch('/api/statistics'),
+        fetch('/api/activities')
+      ]);
+
+      const miners = minersResponse.ok ? await minersResponse.json() : [];
+      const stats = statsResponse.ok ? await statsResponse.json() : {};
+      const activities = activitiesResponse.ok ? await activitiesResponse.json() : [];
+
       const data: AnalyticsData = {
-        hourlyDetections: generateHourlyData(),
-        detectionMethods: [
-          { method: 'RF Detection', count: 45, efficiency: 89.2 },
-          { method: 'Vibration Analysis', count: 38, efficiency: 76.8 },
-          { method: 'Thermal Imaging', count: 32, efficiency: 92.1 },
-          { method: 'AI Classification', count: 55, efficiency: 94.3 },
-          { method: 'Network Analysis', count: 28, efficiency: 71.4 },
-          { method: 'Electromagnetic', count: 22, efficiency: 83.7 }
-        ],
-        threatDistribution: [
-          { level: 'Critical', count: 8, percentage: 12.9 },
-          { level: 'High', count: 15, percentage: 24.2 },
-          { level: 'Medium', count: 24, percentage: 38.7 },
-          { level: 'Low', count: 15, percentage: 24.2 }
-        ],
-        geographicalData: [
-          { location: 'ایلام مرکز', miners: 18, power: 54000 },
-          { location: 'مهران', miners: 12, power: 36000 },
-          { location: 'دهلران', miners: 8, power: 24000 },
-          { location: 'آبدانان', miners: 6, power: 18000 },
-          { location: 'ایوان', miners: 4, power: 12000 }
-        ],
+        hourlyDetections: [],
+        detectionMethods: [],
+        threatDistribution: [],
+        geographicalData: [],
         performanceMetrics: {
-          accuracy: 94.3,
-          falsePositives: 5.7,
-          averageDetectionTime: 2.4,
-          systemUptime: 99.7
+          accuracy: 0,
+          falsePositives: 0,
+          averageDetectionTime: 0,
+          systemUptime: 0
         },
         realTimeStats: {
-          activeScans: 7,
-          avgConfidence: 87.3,
-          totalPowerConsumption: 144000,
-          networkCoverage: 76.8
+          activeScans: 0,
+          avgConfidence: 0,
+          totalPowerConsumption: stats.totalPowerConsumption || 0,
+          networkCoverage: 0
         }
       };
 
       setAnalyticsData(data);
       setLoading(false);
-    }, 1000);
+    } catch (error) {
+      console.error('Error loading analytics data:', error);
+      setLoading(false);
+    }
   };
 
-  const generateHourlyData = () => {
-    const hours = Array.from({ length: 24 }, (_, i) => {
-      const hour = String(i).padStart(2, '0');
-      return {
-        hour: `${hour}:00`,
-        detections: Math.floor(Math.random() * 15) + 1,
-        confidence: Math.floor(Math.random() * 30) + 70
-      };
-    });
-    return hours;
-  };
 
-  const updateRealTimeStats = () => {
-    if (!analyticsData) return;
 
-    setAnalyticsData(prev => prev ? {
-      ...prev,
-      realTimeStats: {
-        activeScans: Math.floor(Math.random() * 10) + 3,
-        avgConfidence: Math.floor(Math.random() * 20) + 80,
-        totalPowerConsumption: Math.floor(Math.random() * 50000) + 120000,
-        networkCoverage: Math.floor(Math.random() * 15) + 70
-      }
-    } : null);
-  };
+
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat('fa-IR').format(num);
@@ -342,7 +315,7 @@ export default function AdvancedAnalytics() {
             <CardHeader>
               <CardTitle className="flex items-center">
                 <Eye className="ml-2 h-5 w-5 text-purple-600" />
-                کارایی روش‌های تشخیص
+                کارایی روش‌های ��شخیص
               </CardTitle>
             </CardHeader>
             <CardContent>
