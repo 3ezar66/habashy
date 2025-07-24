@@ -452,27 +452,165 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getScanSessions(): Promise<ScanSession[]> {
-    return [];
+    try {
+      // Create scan_sessions table if it doesn't exist
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS scan_sessions (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          session_type TEXT NOT NULL,
+          ip_range TEXT,
+          ports TEXT,
+          status TEXT DEFAULT 'pending',
+          start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+          end_time DATETIME,
+          devices_found INTEGER DEFAULT 0,
+          miners_detected INTEGER DEFAULT 0,
+          errors TEXT,
+          created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+      `);
+
+      const sessions = db.prepare('SELECT * FROM scan_sessions ORDER BY created_at DESC').all();
+      return sessions.map(session => ({
+        ...session,
+        sessionType: session.session_type,
+        ipRange: session.ip_range,
+        startTime: session.start_time,
+        endTime: session.end_time,
+        devicesFound: session.devices_found,
+        minersDetected: session.miners_detected,
+        createdAt: session.created_at
+      })) as ScanSession[];
+    } catch (error) {
+      console.error('Error getting scan sessions:', error);
+      return [];
+    }
   }
 
   async createScanSession(insertSession: InsertScanSession): Promise<ScanSession> {
-    return insertSession as ScanSession;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO scan_sessions (session_type, ip_range, ports, status, devices_found, miners_detected, errors)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `);
+
+      const result = stmt.run(
+        insertSession.sessionType,
+        insertSession.ipRange,
+        insertSession.ports,
+        insertSession.status || 'pending',
+        insertSession.devicesFound || 0,
+        insertSession.minersDetected || 0,
+        insertSession.errors
+      );
+
+      const newSession = db.prepare('SELECT * FROM scan_sessions WHERE id = ?').get(result.lastInsertRowid);
+      return {
+        ...newSession,
+        sessionType: newSession.session_type,
+        ipRange: newSession.ip_range,
+        startTime: newSession.start_time,
+        endTime: newSession.end_time,
+        devicesFound: newSession.devices_found,
+        minersDetected: newSession.miners_detected,
+        createdAt: newSession.created_at
+      } as ScanSession;
+    } catch (error) {
+      console.error('Error creating scan session:', error);
+      throw error;
+    }
   }
 
   async updateScanSession(id: number, updates: Partial<InsertScanSession>): Promise<ScanSession | undefined> {
-    return undefined;
+    try {
+      const setParts = [];
+      const values = [];
+
+      if (updates.status !== undefined) { setParts.push('status = ?'); values.push(updates.status); }
+      if (updates.endTime !== undefined) { setParts.push('end_time = ?'); values.push(updates.endTime); }
+      if (updates.devicesFound !== undefined) { setParts.push('devices_found = ?'); values.push(updates.devicesFound); }
+      if (updates.minersDetected !== undefined) { setParts.push('miners_detected = ?'); values.push(updates.minersDetected); }
+      if (updates.errors !== undefined) { setParts.push('errors = ?'); values.push(updates.errors); }
+
+      values.push(id);
+
+      const stmt = db.prepare(`UPDATE scan_sessions SET ${setParts.join(', ')} WHERE id = ?`);
+      stmt.run(...values);
+
+      const updated = db.prepare('SELECT * FROM scan_sessions WHERE id = ?').get(id);
+      if (!updated) return undefined;
+
+      return {
+        ...updated,
+        sessionType: updated.session_type,
+        ipRange: updated.ip_range,
+        startTime: updated.start_time,
+        endTime: updated.end_time,
+        devicesFound: updated.devices_found,
+        minersDetected: updated.miners_detected,
+        createdAt: updated.created_at
+      } as ScanSession;
+    } catch (error) {
+      console.error('Error updating scan session:', error);
+      return undefined;
+    }
   }
 
   async getActiveScanSessions(): Promise<ScanSession[]> {
-    return [];
+    try {
+      const sessions = db.prepare('SELECT * FROM scan_sessions WHERE status = ? ORDER BY created_at DESC').all('running');
+      return sessions.map(session => ({
+        ...session,
+        sessionType: session.session_type,
+        ipRange: session.ip_range,
+        startTime: session.start_time,
+        endTime: session.end_time,
+        devicesFound: session.devices_found,
+        minersDetected: session.miners_detected,
+        createdAt: session.created_at
+      })) as ScanSession[];
+    } catch (error) {
+      console.error('Error getting active scan sessions:', error);
+      return [];
+    }
   }
 
   async getRecentActivities(limit: number = 50): Promise<SystemActivity[]> {
-    return [];
+    try {
+      const activities = db.prepare('SELECT * FROM activities ORDER BY timestamp DESC LIMIT ?').all(limit);
+      return activities.map(activity => ({
+        ...activity,
+        activityType: activity.type,
+        createdAt: activity.timestamp
+      })) as SystemActivity[];
+    } catch (error) {
+      console.error('Error getting recent activities:', error);
+      return [];
+    }
   }
 
   async createActivity(insertActivity: InsertActivity): Promise<SystemActivity> {
-    return insertActivity as SystemActivity;
+    try {
+      const stmt = db.prepare(`
+        INSERT INTO activities (type, description)
+        VALUES (?, ?)
+      `);
+
+      const result = stmt.run(
+        insertActivity.activityType,
+        insertActivity.description
+      );
+
+      const newActivity = db.prepare('SELECT * FROM activities WHERE id = ?').get(result.lastInsertRowid);
+      return {
+        ...newActivity,
+        activityType: newActivity.type,
+        createdAt: newActivity.timestamp
+      } as SystemActivity;
+    } catch (error) {
+      console.error('Error creating activity:', error);
+      throw error;
+    }
   }
 
   async getRfSignals(): Promise<RfSignal[]> {
