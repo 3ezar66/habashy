@@ -69,59 +69,45 @@ export default function Advanced3DMap() {
   };
 
   useEffect(() => {
-    // Generate sample detected devices for demonstration
-    generateSampleDevices();
-    
+    // Load real detected devices from API
+    loadRealDevices();
+
     // Set up real-time updates
     const interval = setInterval(() => {
-      updateDeviceData();
-    }, 5000);
+      loadRealDevices();
+    }, 30000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const generateSampleDevices = () => {
-    const sampleDevices: DetectedDevice[] = [];
-    const deviceTypes: DetectedDevice['type'][] = ['asic', 'gpu', 'fpga', 'unknown'];
-    const threatLevels: DetectedDevice['threat_level'][] = ['critical', 'high', 'medium', 'low'];
-    const detectionMethods = ['rf_detection', 'vibration_analysis', 'thermal_imaging', 'electromagnetic_scan'];
-
-    for (let i = 0; i < 15; i++) {
-      const lat = ilamBounds.south + Math.random() * (ilamBounds.north - ilamBounds.south);
-      const lng = ilamBounds.west + Math.random() * (ilamBounds.east - ilamBounds.west);
-      
-      const device: DetectedDevice = {
-        id: `device_${i + 1}`,
-        lat,
-        lng,
-        type: deviceTypes[Math.floor(Math.random() * deviceTypes.length)],
-        confidence: Math.random() * 100,
-        threat_level: threatLevels[Math.floor(Math.random() * threatLevels.length)],
-        detection_methods: detectionMethods.slice(0, Math.floor(Math.random() * 3) + 1),
-        power_consumption: Math.random() * 4000 + 500,
-        temperature: Math.random() * 60 + 40,
-        rf_strength: Math.random() * 100,
-        vibration_level: Math.random() * 100,
-        last_seen: new Date(Date.now() - Math.random() * 3600000).toISOString()
-      };
-      
-      sampleDevices.push(device);
+  const loadRealDevices = async () => {
+    try {
+      const response = await fetch('/api/miners');
+      if (response.ok) {
+        const miners = await response.json();
+        const devices: DetectedDevice[] = miners.map((miner: any) => ({
+          id: miner.id.toString(),
+          lat: miner.latitude || 33.6374,
+          lng: miner.longitude || 46.4227,
+          type: miner.deviceType || 'unknown',
+          confidence: miner.suspicionScore || 0,
+          threat_level: miner.threatLevel || 'low',
+          detection_methods: miner.detectionMethod ? miner.detectionMethod.split(',') : [],
+          power_consumption: miner.powerConsumption || 0,
+          temperature: null,
+          rf_strength: null,
+          vibration_level: null,
+          last_seen: miner.detectionTime || new Date().toISOString()
+        }));
+        setDetectedDevices(devices);
+      }
+    } catch (error) {
+      console.error('Error loading real devices:', error);
+      setDetectedDevices([]);
     }
-
-    setDetectedDevices(sampleDevices);
   };
 
-  const updateDeviceData = () => {
-    setDetectedDevices(prev => 
-      prev.map(device => ({
-        ...device,
-        rf_strength: Math.max(0, Math.min(100, (device.rf_strength || 0) + (Math.random() - 0.5) * 20)),
-        vibration_level: Math.max(0, Math.min(100, (device.vibration_level || 0) + (Math.random() - 0.5) * 15)),
-        temperature: Math.max(30, Math.min(100, (device.temperature || 50) + (Math.random() - 0.5) * 10)),
-        last_seen: Math.random() > 0.7 ? new Date().toISOString() : device.last_seen
-      }))
-    );
-  };
+
 
   const getDeviceColor = (device: DetectedDevice) => {
     switch (device.threat_level) {
@@ -238,7 +224,7 @@ export default function Advanced3DMap() {
                   className="w-full"
                 >
                   <RotateCcw className="h-3 w-3 ml-1" />
-                  بازنشانی
+                  بازنش��نی
                 </Button>
               </div>
             </Card>
