@@ -225,9 +225,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize default admin user
   await initializeDefaultUser();
 
-  // Initialize sample data for testing
-  await initializeSampleData();
-
   // WebSocket server for real-time updates
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
