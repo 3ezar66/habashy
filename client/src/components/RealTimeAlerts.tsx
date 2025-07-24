@@ -34,71 +34,85 @@ export default function RealTimeAlerts() {
   const [filter, setFilter] = useState<string>('all');
 
   useEffect(() => {
-    // Simulate real-time alerts
-    const generateAlert = () => {
-      const alertTypes = ['detection', 'threat', 'system', 'network'] as const;
-      const severities = ['critical', 'high', 'medium', 'low'] as const;
-      const messages = [
-        'تشخیص ماینر ASIC جدید در شبکه',
-        'فعالیت مشکوک RF در فرکانس 2.4 GHz',
-        'سطح مصرف برق غیرعادی در منطقه',
-        'الگوی ارتعاشی ماینر GPU شناسایی شد',
-        'امضای حرارتی مشکوک تشخیص داده شد',
-        'اتصال شبکه جدید به پورت ماینینگ',
-        'تغییر در الگوی ترافیک شبکه',
-        'سیگنال الکترومغناطیسی قوی شناسایی شد'
-      ];
+    // Load real alerts from API
+    loadRealAlerts();
 
-      const type = alertTypes[Math.floor(Math.random() * alertTypes.length)];
-      const severity = severities[Math.floor(Math.random() * severities.length)];
-      const message = messages[Math.floor(Math.random() * messages.length)];
+    // Set up WebSocket connection for real-time alerts
+    setupWebSocketConnection();
 
-      const newAlert: Alert = {
-        id: `alert_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-        type,
-        severity,
-        title: `اعلان ${getSeverityText(severity)}`,
-        message,
-        timestamp: new Date().toISOString(),
-        acknowledged: false,
-        details: {
-          location: 'Ilam Province',
-          confidence: Math.random() * 100,
-          method: type === 'detection' ? 'multi_modal' : type
-        }
-      };
-
-      setAlerts(prev => [newAlert, ...prev].slice(0, 50)); // Keep last 50 alerts
-
-      // Play sound for critical/high alerts
-      if ((severity === 'critical' || severity === 'high') && soundEnabled) {
-        playAlertSound(severity);
-      }
-
-      // Show toast notification
-      if (severity === 'critical' || severity === 'high') {
-        toast({
-          title: newAlert.title,
-          description: newAlert.message,
-          variant: severity === 'critical' ? 'destructive' : 'default',
-        });
-      }
-    };
-
-    // Generate initial alerts
-    for (let i = 0; i < 5; i++) {
-      setTimeout(generateAlert, i * 2000);
-    }
-
-    // Continue generating alerts periodically
-    const interval = setInterval(() => {
-      if (Math.random() > 0.7) { // 30% chance every 10 seconds
-        generateAlert();
-      }
-    }, 10000);
+    // Periodically refresh alerts
+    const interval = setInterval(loadRealAlerts, 30000);
 
     return () => clearInterval(interval);
   }, [soundEnabled]);
+
+  const loadRealAlerts = async () => {
+    try {
+      const response = await fetch('/api/advanced-detection/alerts?hours=24');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.alerts && Array.isArray(data.alerts)) {
+          const formattedAlerts: Alert[] = data.alerts.map((alert: any) => ({
+            id: alert.id || `alert_${Date.now()}`,
+            type: alert.type || 'system',
+            severity: alert.severity || 'medium',
+            title: alert.title || 'اعلان سیستم',
+            message: alert.message || alert.description,
+            timestamp: alert.timestamp || new Date().toISOString(),
+            acknowledged: false,
+            details: alert.details || {}
+          }));
+          setAlerts(formattedAlerts);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading real alerts:', error);
+    }
+  };
+
+  const setupWebSocketConnection = () => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws`;
+
+    try {
+      const ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+
+          if (data.type === 'miner_detected' || data.type === 'scan_completed' || data.type === 'alert_generated') {
+            const newAlert: Alert = {
+              id: `alert_${Date.now()}`,
+              type: 'detection',
+              severity: data.type === 'miner_detected' ? 'high' : 'medium',
+              title: data.type === 'miner_detected' ? 'ماینر جدید تشخیص داده شد' : 'اعلان سیستم',
+              message: data.message || JSON.stringify(data.data),
+              timestamp: new Date().toISOString(),
+              acknowledged: false,
+              details: data.data || {}
+            };
+
+            setAlerts(prev => [newAlert, ...prev].slice(0, 50));
+
+            // Play sound and show notification for real alerts
+            if (soundEnabled) {
+              playAlertSound(newAlert.severity);
+            }
+          }
+        } catch (error) {
+          console.error('Error parsing WebSocket message:', error);
+        }
+      };
+
+      ws.onclose = () => {
+        // Reconnect after 5 seconds
+        setTimeout(setupWebSocketConnection, 5000);
+      };
+    } catch (error) {
+      console.error('Error setting up WebSocket connection:', error);
+    }
+  };
 
   const playAlertSound = (severity: string) => {
     // Create audio context for playing alert sounds
