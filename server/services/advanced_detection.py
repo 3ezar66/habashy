@@ -296,34 +296,9 @@ class AdvancedMinerDetectionSystem:
             logger.warning("Audio libraries not available for vibration analysis")
             return
         
-        # Simulate accelerometer/microphone readings
-        for sample_batch in range(100):
-            if not self.is_active:
-                break
-            
-            # Generate synthetic vibration data
-            sample_rate = 44100
-            duration = 1.0
-            t = np.linspace(0, duration, int(sample_rate * duration))
-            
-            # Background noise
-            vibration_signal = np.random.normal(0, 0.1, len(t))
-            
-            # Add miner signatures randomly
-            if np.random.random() > 0.7:  # 30% chance of miner signature
-                for miner_category, miners in self.miner_signatures.items():
-                    for miner_type, signature in miners.items():
-                        if signature['vibration_pattern'] in ['high_frequency_continuous', 'high_frequency_variable']:
-                            # Add characteristic frequencies
-                            for freq in signature['acoustic_pattern']:
-                                amplitude = np.random.uniform(0.3, 0.8)
-                                phase = np.random.uniform(0, 2*np.pi)
-                                vibration_signal += amplitude * np.sin(2*np.pi*freq*t + phase)
-            
-            # Analyze vibration pattern
-            fft_data = fft(vibration_signal)
-            freqs = fftfreq(len(vibration_signal), 1/sample_rate)
-            magnitude = np.abs(fft_data)
+        # Note: Real vibration analysis would require physical accelerometer/microphone hardware
+        # This is a placeholder for actual hardware integration
+        logger.info("Vibration analysis requires physical sensors - skipping simulated data")
             
             # Find dominant frequencies
             peak_indices = scipy.signal.find_peaks(magnitude, height=np.max(magnitude)*0.3)[0]
