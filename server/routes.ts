@@ -49,6 +49,173 @@ async function initializeDefaultUser() {
   }
 }
 
+async function initializeSampleData() {
+  try {
+    console.log("Checking for existing sample data...");
+    const existingMiners = await storage.getDetectedMiners();
+
+    if (existingMiners.length === 0) {
+      console.log("Creating sample miners for testing...");
+
+      // اضافه کردن نمونه ماینرها برای تست
+      const sampleMiners = [
+        {
+          ipAddress: "192.168.1.100",
+          macAddress: "00:1B:44:11:3A:B7",
+          deviceType: "antminer",
+          openPorts: "22,80,4028",
+          suspicionScore: 95,
+          city: "ایلام",
+          country: "ایران",
+          latitude: 33.6374,
+          longitude: 46.4227,
+          hostname: "antminer-s19",
+          status: "active",
+          powerConsumption: 3250,
+          hashRate: "95 TH/s",
+          responseTime: 45,
+          isActive: true,
+          notes: "Antminer S19 Pro - تشخیص شده با اطمینان بالا",
+          detectionMethod: "port_scan,web_interface,api_response",
+          threatLevel: "critical",
+          processName: "cgminer",
+          confidenceScore: 95
+        },
+        {
+          ipAddress: "192.168.1.156",
+          macAddress: "00:1A:92:45:2C:D8",
+          deviceType: "whatsminer",
+          openPorts: "80,8080,4028",
+          suspicionScore: 88,
+          city: "ایلام",
+          country: "ایران",
+          latitude: 33.6280,
+          longitude: 46.4150,
+          hostname: "whatsminer-m30s",
+          status: "active",
+          powerConsumption: 3344,
+          hashRate: "88 TH/s",
+          responseTime: 52,
+          isActive: true,
+          notes: "WhatsMiner M30S+ - فعال و در حال استخراج",
+          detectionMethod: "web_interface,power_analysis",
+          threatLevel: "high",
+          processName: "btcminer",
+          confidenceScore: 88
+        },
+        {
+          ipAddress: "192.168.1.203",
+          macAddress: "00:2B:67:89:1F:E3",
+          deviceType: "gpu_miner",
+          openPorts: "22,3333,8080",
+          suspicionScore: 75,
+          city: "ایلام",
+          country: "ایران",
+          latitude: 33.6450,
+          longitude: 46.4300,
+          hostname: "mining-rig-01",
+          status: "active",
+          powerConsumption: 1850,
+          hashRate: "420 MH/s",
+          responseTime: 38,
+          isActive: true,
+          notes: "ریگ GPU - احتمالاً استخراج اتریوم",
+          detectionMethod: "network_pattern,gpu_detection",
+          threatLevel: "medium",
+          processName: "t-rex",
+          confidenceScore: 75
+        },
+        {
+          ipAddress: "192.168.1.89",
+          macAddress: "00:3C:45:12:8A:F9",
+          deviceType: "asic",
+          openPorts: "80,443,4028,9999",
+          suspicionScore: 92,
+          city: "ایلام",
+          country: "ایران",
+          latitude: 33.6320,
+          longitude: 46.4180,
+          hostname: "avalon-1246",
+          status: "active",
+          powerConsumption: 3420,
+          hashRate: "90 TH/s",
+          responseTime: 41,
+          isActive: true,
+          notes: "Avalon 1246 - ASIC ماینر قدرتمند",
+          detectionMethod: "api_response,power_signature",
+          threatLevel: "critical",
+          processName: "cgminer",
+          confidenceScore: 92
+        },
+        {
+          ipAddress: "192.168.1.78",
+          macAddress: "00:4D:23:56:9B:C1",
+          deviceType: "unknown",
+          openPorts: "80,9999",
+          suspicionScore: 65,
+          city: "ایلام",
+          country: "ایران",
+          latitude: 33.6400,
+          longitude: 46.4250,
+          hostname: "suspicious-device",
+          status: "suspicious",
+          powerConsumption: 2100,
+          hashRate: null,
+          responseTime: 78,
+          isActive: true,
+          notes: "دستگاه مشکوک - نیاز به بررسی بیشتر",
+          detectionMethod: "port_pattern,power_anomaly",
+          threatLevel: "medium",
+          processName: null,
+          confidenceScore: 65
+        }
+      ];
+
+      for (const minerData of sampleMiners) {
+        await storage.createMiner(minerData);
+
+        // اضافه کردن فعالیت سیستم
+        await storage.createActivity({
+          activityType: "miner_detected",
+          description: `ماینر جدید تشخیص داده شد: ${minerData.ipAddress} (${minerData.deviceType})`
+        });
+      }
+
+      console.log("Sample miners created successfully");
+
+      // اضافه کردن نمونه فعالیت‌ها
+      const sampleActivities = [
+        {
+          activityType: "scan_completed",
+          description: "اسکن جامع شبکه تکمیل شد - 5 ماینر تشخیص داده شد"
+        },
+        {
+          activityType: "rf_scan",
+          description: "اسکن امواج رادیویی شروع شد"
+        },
+        {
+          activityType: "network_analysis",
+          description: "تجزیه و تحلیل ترافیک شبکه انجام شد"
+        },
+        {
+          activityType: "alert_generated",
+          description: "هشدار: فعالیت مشکوک در IP 192.168.1.78"
+        }
+      ];
+
+      for (const activity of sampleActivities) {
+        await storage.createActivity(activity);
+      }
+
+      console.log("Sample activities created successfully");
+    } else {
+      console.log("Sample data already exists");
+    }
+  } catch (error) {
+    console.error("Error creating sample data:", error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
