@@ -7,7 +7,7 @@ import sys
 import time
 
 def geolocate_device(ip_address):
-    """دریافت موقعیت جغرافیایی برای آدرس IP"""
+    """دریافت موقعیت جغراف��ایی برای آدرس IP"""
     
     # چک کردن IP های محلی
     if ip_address.startswith('192.168.') or ip_address.startswith('10.') or ip_address.startswith('172.'):
@@ -47,34 +47,16 @@ def geolocate_device(ip_address):
         'isp': 'شبکه محلی'
     }
     
-    # ترکیب نتایج از مناطق مختلف
+    # استفاده از اطلاعات محلی
     if result['providers']:
-        # انتخاب بهترین نتیجه (معمولاً ip-api)
-        best_provider = None
-        if 'ip-api' in result['providers'] and 'error' not in result['providers']['ip-api']:
-            best_provider = result['providers']['ip-api']
-        elif 'ipapi' in result['providers'] and 'error' not in result['providers']['ipapi']:
-            best_provider = result['providers']['ipapi']
-        elif 'ipinfo' in result['providers'] and 'error' not in result['providers']['ipinfo']:
-            best_provider = result['providers']['ipinfo']
-        
-        if best_provider:
-            result['location'] = best_provider
-        else:
-            result['status'] = 'failed'
-            result['location'] = {
-                'city': 'نامشخص',
-                'country': 'نامشخص',
-                'lat': None,
-                'lon': None
-            }
+        result['location'] = result['providers']['local']
     else:
         result['status'] = 'failed'
         result['location'] = {
-            'city': 'نامشخص', 
-            'country': 'نامشخص',
-            'lat': None,
-            'lon': None
+            'city': 'ایلام',
+            'country': 'ایران',
+            'lat': 33.6374,
+            'lon': 46.4227
         }
     
     # اگر در ایران است، شهر را به ایلام تغییر بده (برای تست)
