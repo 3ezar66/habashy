@@ -307,14 +307,9 @@ class AdvancedMinerDetectionSystem:
         return
     
     async def electromagnetic_scan_module(self, session_id):
-        """Electromagnetic field analysis"""
-        logger.info(f"Electromagnetic Scan module started for session {session_id}")
-        
-        base_field = 25.0  # Earth's magnetic field (microTesla)
-        
-        for measurement in range(50):
-            if not self.is_active:
-                break
+        """Electromagnetic field analysis - requires physical magnetometer hardware"""
+        logger.info(f"Electromagnetic Scan module requires physical hardware - skipping simulation")
+        return
             
             # Simulate EM field measurements
             field_strength = base_field + np.random.normal(0, 3)
