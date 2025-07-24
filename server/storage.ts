@@ -121,6 +121,7 @@ CREATE TABLE IF NOT EXISTS users (
   last_login DATETIME,
   is_active BOOLEAN DEFAULT 1
 );
+
 CREATE TABLE IF NOT EXISTS miners (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   ip TEXT,
@@ -142,11 +143,59 @@ CREATE TABLE IF NOT EXISTS miners (
   is_active BOOLEAN DEFAULT 1,
   notes TEXT
 );
+
 CREATE TABLE IF NOT EXISTS activities (
   id INTEGER PRIMARY KEY AUTOINCREMENT,
   type TEXT,
   description TEXT,
   timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS scan_sessions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  session_type TEXT NOT NULL,
+  ip_range TEXT,
+  ports TEXT,
+  status TEXT DEFAULT 'pending',
+  start_time DATETIME DEFAULT CURRENT_TIMESTAMP,
+  end_time DATETIME,
+  devices_found INTEGER DEFAULT 0,
+  miners_detected INTEGER DEFAULT 0,
+  errors TEXT,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS network_connections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  local_address TEXT,
+  local_port INTEGER,
+  remote_address TEXT,
+  remote_port INTEGER,
+  protocol TEXT,
+  status TEXT,
+  process_name TEXT,
+  miner_id INTEGER,
+  created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (miner_id) REFERENCES miners (id)
+);
+
+CREATE TABLE IF NOT EXISTS rf_signals (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  frequency REAL,
+  signal_strength REAL,
+  location TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS alerts (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  type TEXT,
+  severity TEXT,
+  title TEXT,
+  message TEXT,
+  timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+  acknowledged BOOLEAN DEFAULT 0,
+  details TEXT
 );
 `);
 
