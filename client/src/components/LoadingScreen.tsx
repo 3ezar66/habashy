@@ -283,17 +283,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
           </div>
         </motion.div>
 
-        {/* Cryptocurrency tickers */}
-        <motion.div
-          animate={{ y: [0, -10, 0] }}
-          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
-          className="absolute bottom-8 left-8 right-8 flex justify-between text-xs text-gray-500"
-        >
-          <span>BTC: $43,250</span>
-          <span>ETH: $2,580</span>
-          <span>ADA: $0.45</span>
-          <span>LTC: $73.21</span>
-        </motion.div>
+
       </div>
 
       {/* CSS for grid animation */}
