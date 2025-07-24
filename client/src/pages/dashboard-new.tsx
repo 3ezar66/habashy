@@ -371,19 +371,20 @@ export default function NewDashboard() {
             </div>
           )}
 
-          {/* Other tabs would be implemented similarly */}
-          {activeTab !== 'overview' && activeTab !== 'scan' && (
-            <div className="win11-animate-in">
-              <div className="win11-card">
-                <div className="win11-card-content" style={{ textAlign: 'center', padding: '60px 20px' }}>
-                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>🚧</div>
-                  <h3 style={{ marginBottom: '8px' }}>در حال توسعه</h3>
-                  <p style={{ color: 'var(--win11-text-secondary)' }}>
-                    این بخش در حال توسعه است و به زودی فعال خواهد شد
-                  </p>
-                </div>
-              </div>
-            </div>
+          {activeTab === 'detection' && (
+            <AdvancedDetectionTab />
+          )}
+
+          {activeTab === 'map' && (
+            <MapTab />
+          )}
+
+          {activeTab === 'alerts' && (
+            <AlertsTab />
+          )}
+
+          {activeTab === 'settings' && (
+            <SettingsTab />
           )}
         </main>
       </div>
