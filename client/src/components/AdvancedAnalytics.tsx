@@ -58,13 +58,13 @@ export default function AdvancedAnalytics() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Generate sample analytics data
-    generateAnalyticsData();
-    
+    // Load real analytics data from API
+    loadRealAnalyticsData();
+
     // Update data periodically
     const interval = setInterval(() => {
-      updateRealTimeStats();
-    }, 30000); // Update every 30 seconds
+      loadRealAnalyticsData();
+    }, 60000); // Update every minute
 
     return () => clearInterval(interval);
   }, [selectedTimeframe]);
