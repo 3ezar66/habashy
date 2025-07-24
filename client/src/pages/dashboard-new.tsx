@@ -55,6 +55,404 @@ interface Activity {
   timestamp: string;
 }
 
+// Advanced Detection Component
+function AdvancedDetectionTab() {
+  const [isScanning, setIsScanning] = useState(false);
+  const [detectionModules, setDetectionModules] = useState([
+    { id: 'rf_detection', name: 'تشخیص امواج رادیویی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'vibration_analysis', name: 'تحلیل ارتعاشات', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'thermal_imaging', name: 'تصویربرداری حرارتی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'electromagnetic_scan', name: 'اسکن الکترومغناطیسی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'acoustic_fingerprinting', name: 'شناسایی صوتی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'ai_classification', name: 'طبقه‌بندی هوش مصنوعی', status: 'inactive', progress: 0, confidence: 0, detections: 0 }
+  ]);
+
+  const startAdvancedDetection = async () => {
+    setIsScanning(true);
+
+    try {
+      const response = await fetch('/api/advanced-detection/start', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          detection_types: ['rf_detection', 'vibration_analysis', 'electromagnetic_scan', 'thermal_imaging', 'acoustic_fingerprinting', 'ai_classification'],
+          location: [33.6374, 46.4227],
+          duration: 300
+        })
+      });
+
+      if (response.ok) {
+        // شروع شبیه‌سازی پیشرفت
+        setDetectionModules(prev => prev.map(module => ({ ...module, status: 'scanning', progress: 0 })));
+
+        // شبیه‌سازی پیشرفت هر ماژول
+        const interval = setInterval(() => {
+          setDetectionModules(prev => prev.map(module => {
+            if (module.status === 'scanning' && module.progress < 100) {
+              const newProgress = Math.min(module.progress + Math.random() * 15, 100);
+              const newDetections = Math.floor(Math.random() * 3);
+              const newConfidence = Math.random() * 100;
+
+              return {
+                ...module,
+                progress: newProgress,
+                detections: module.detections + newDetections,
+                confidence: newConfidence,
+                status: newProgress >= 100 ? 'completed' : 'scanning'
+              };
+            }
+            return module;
+          }));
+        }, 2000);
+
+        // متوقف کردن شبیه‌سازی بعد از 30 ثانیه
+        setTimeout(() => {
+          clearInterval(interval);
+          setIsScanning(false);
+          setDetectionModules(prev => prev.map(module => ({ ...module, status: 'completed' })));
+        }, 30000);
+
+      } else {
+        alert('خطا در شروع تشخیص پیشرفته');
+        setIsScanning(false);
+      }
+    } catch (error) {
+      alert('خطا در ارتباط با سرور');
+      setIsScanning(false);
+    }
+  };
+
+  const stopAdvancedDetection = async () => {
+    try {
+      await fetch('/api/advanced-detection/stop/current', { method: 'POST' });
+      setIsScanning(false);
+      setDetectionModules(prev => prev.map(module => ({ ...module, status: 'inactive', progress: 0 })));
+    } catch (error) {
+      console.error('Error stopping detection:', error);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'scanning': return 'var(--win11-info)';
+      case 'completed': return 'var(--win11-success)';
+      case 'error': return 'var(--win11-error)';
+      default: return 'var(--win11-text-secondary)';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'scanning': return '🔄';
+      case 'completed': return '✅';
+      case 'error': return '❌';
+      default: return '⭕';
+    }
+  };
+
+  return (
+    <div className="win11-animate-in">
+      <h1 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '24px' }}>
+        سیستم تشخیص پیشرفته
+      </h1>
+
+      {/* Control Panel */}
+      <div className="win11-card" style={{ marginBottom: '24px' }}>
+        <div className="win11-card-header">
+          <h3 className="win11-card-title">کنترل سیستم تشخیص</h3>
+          <p className="win11-card-subtitle">مدیریت و کنترل ماژول‌های تشخیص پیشرفته</p>
+        </div>
+        <div className="win11-card-content">
+          <div style={{ display: 'flex', gap: '12px', marginBottom: '20px' }}>
+            <button
+              onClick={startAdvancedDetection}
+              disabled={isScanning}
+              className="win11-button win11-button-primary"
+            >
+              <ShieldIcon />
+              {isScanning ? 'در حال اجرا...' : 'شروع تشخیص پیشرفته'}
+            </button>
+
+            {isScanning && (
+              <button
+                onClick={stopAdvancedDetection}
+                className="win11-button win11-button-secondary"
+              >
+                ⏹️ متوقف کردن
+              </button>
+            )}
+          </div>
+
+          {isScanning && (
+            <div style={{
+              background: 'var(--win11-surface-alt)',
+              padding: '12px',
+              borderRadius: 'var(--win11-radius-medium)',
+              border: '1px solid var(--win11-info)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'var(--win11-info)' }}>
+                <span style={{ animation: 'spin 1s linear infinite' }}>🔄</span>
+                سیستم تشخیص پیشرفته در حال اجرا است...
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Detection Modules Grid */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(350px, 1fr))', gap: '16px' }}>
+        {detectionModules.map((module) => (
+          <div key={module.id} className="win11-card">
+            <div className="win11-card-content">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ fontSize: '20px' }}>{getStatusIcon(module.status)}</span>
+                  <h4 style={{ margin: 0, fontSize: '16px', fontWeight: '600' }}>{module.name}</h4>
+                </div>
+                <div style={{
+                  background: getStatusColor(module.status),
+                  color: 'white',
+                  padding: '2px 8px',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  fontWeight: '500'
+                }}>
+                  {module.status === 'scanning' ? 'در حال اسکن' :
+                   module.status === 'completed' ? 'تکمیل شده' :
+                   module.status === 'error' ? 'خطا' : 'غیرفعال'}
+                </div>
+              </div>
+
+              {/* Progress Bar */}
+              <div style={{ marginBottom: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px', fontSize: '12px' }}>
+                  <span>پیشرفت</span>
+                  <span>{Math.round(module.progress)}%</span>
+                </div>
+                <div className="win11-progress">
+                  <div
+                    className="win11-progress-bar"
+                    style={{
+                      width: `${module.progress}%`,
+                      background: getStatusColor(module.status)
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Stats */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', fontSize: '14px' }}>
+                <div style={{ textAlign: 'center', padding: '8px', background: 'var(--win11-surface-alt)', borderRadius: 'var(--win11-radius-small)' }}>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--win11-accent)' }}>
+                    {module.detections}
+                  </div>
+                  <div style={{ color: 'var(--win11-text-secondary)', fontSize: '12px' }}>تشخیص‌ها</div>
+                </div>
+                <div style={{ textAlign: 'center', padding: '8px', background: 'var(--win11-surface-alt)', borderRadius: 'var(--win11-radius-small)' }}>
+                  <div style={{ fontSize: '18px', fontWeight: '600', color: 'var(--win11-success)' }}>
+                    {Math.round(module.confidence)}%
+                  </div>
+                  <div style={{ color: 'var(--win11-text-secondary)', fontSize: '12px' }}>اطمینان</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Map Component
+function MapTab() {
+  return (
+    <div className="win11-animate-in">
+      <h1 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '24px' }}>
+        نقشه تشخیص‌ها
+      </h1>
+
+      <div className="win11-card">
+        <div className="win11-card-header">
+          <h3 className="win11-card-title">موقعیت دستگاه‌های تشخیص داده شده</h3>
+          <p className="win11-card-subtitle">نمایش جغرافیایی ماینرهای شناسایی شده در استان ایلام</p>
+        </div>
+        <div className="win11-card-content">
+          <div style={{
+            height: '400px',
+            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+            borderRadius: 'var(--win11-radius-medium)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            color: 'white',
+            position: 'relative',
+            overflow: 'hidden'
+          }}>
+            <div style={{ textAlign: 'center', zIndex: 2 }}>
+              <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
+              <h3>نقشه اس��ان ایلام</h3>
+              <p>موقعیت ماینرهای تشخیص داده شده</p>
+
+              {/* Simulated map points */}
+              <div style={{ position: 'absolute', top: '30%', left: '40%', background: 'red', width: '10px', height: '10px', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
+              <div style={{ position: 'absolute', top: '50%', left: '60%', background: 'orange', width: '8px', height: '8px', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
+              <div style={{ position: 'absolute', top: '70%', left: '30%', background: 'red', width: '12px', height: '12px', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
+            </div>
+          </div>
+
+          <div style={{ marginTop: '20px', display: 'flex', gap: '20px', justifyContent: 'space-around' }}>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: '12px', height: '12px', background: 'red', borderRadius: '50%', margin: '0 auto 4px' }} />
+              <span style={{ fontSize: '12px' }}>بحرانی</span>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: '10px', height: '10px', background: 'orange', borderRadius: '50%', margin: '0 auto 4px' }} />
+              <span style={{ fontSize: '12px' }}>هشدار</span>
+            </div>
+            <div style={{ textAlign: 'center' }}>
+              <div style={{ width: '8px', height: '8px', background: 'yellow', borderRadius: '50%', margin: '0 auto 4px' }} />
+              <span style={{ fontSize: '12px' }}>متوسط</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Alerts Component
+function AlertsTab() {
+  const [alerts, setAlerts] = useState([
+    { id: 1, type: 'critical', title: 'ماینر ASIC تشخیص داده شد', message: 'دستگاه مشکوک در IP 192.168.1.100', time: new Date().toLocaleString('fa-IR') },
+    { id: 2, type: 'warning', title: 'سیگنال RF غیرعادی', message: 'فعالیت مشکوک در فرکانس 2.4 GHz', time: new Date(Date.now() - 300000).toLocaleString('fa-IR') },
+    { id: 3, type: 'info', title: 'اسکن تکمیل شد', message: '5 دستگاه جدید بررسی شد', time: new Date(Date.now() - 600000).toLocaleString('fa-IR') }
+  ]);
+
+  const getAlertColor = (type: string) => {
+    switch (type) {
+      case 'critical': return 'var(--win11-error)';
+      case 'warning': return 'var(--win11-warning)';
+      case 'info': return 'var(--win11-info)';
+      default: return 'var(--win11-text-secondary)';
+    }
+  };
+
+  const getAlertIcon = (type: string) => {
+    switch (type) {
+      case 'critical': return '🚨';
+      case 'warning': return '⚠️';
+      case 'info': return 'ℹ️';
+      default: return '📢';
+    }
+  };
+
+  return (
+    <div className="win11-animate-in">
+      <h1 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '24px' }}>
+        مرکز هشدارها
+      </h1>
+
+      <div className="win11-card">
+        <div className="win11-card-header">
+          <h3 className="win11-card-title">هشدارهای اخیر سیستم</h3>
+          <p className="win11-card-subtitle">آخرین اعلان‌ها و هشدارهای تشخیص</p>
+        </div>
+        <div className="win11-card-content">
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            {alerts.map((alert) => (
+              <div key={alert.id} style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '12px',
+                padding: '16px',
+                borderRadius: 'var(--win11-radius-medium)',
+                border: `1px solid ${getAlertColor(alert.type)}`,
+                background: `${getAlertColor(alert.type)}08`
+              }}>
+                <span style={{ fontSize: '24px' }}>{getAlertIcon(alert.type)}</span>
+                <div style={{ flex: 1 }}>
+                  <h4 style={{ margin: '0 0 4px 0', color: getAlertColor(alert.type) }}>{alert.title}</h4>
+                  <p style={{ margin: '0 0 4px 0', fontSize: '14px' }}>{alert.message}</p>
+                  <small style={{ color: 'var(--win11-text-secondary)' }}>{alert.time}</small>
+                </div>
+                <button className="win11-button win11-button-secondary" style={{ minWidth: 'auto', padding: '4px 8px' }}>
+                  تأیید
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Settings Component
+function SettingsTab() {
+  return (
+    <div className="win11-animate-in">
+      <h1 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '24px' }}>
+        تنظیمات سیستم
+      </h1>
+
+      <div style={{ display: 'grid', gap: '16px' }}>
+        <div className="win11-card">
+          <div className="win11-card-header">
+            <h3 className="win11-card-title">تنظیمات تشخیص</h3>
+          </div>
+          <div className="win11-card-content">
+            <div style={{ display: 'grid', gap: '16px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>تشخیص خودکار</span>
+                <label className="win11-toggle">
+                  <input type="checkbox" defaultChecked />
+                  <span className="win11-toggle-slider"></span>
+                </label>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>اعلان‌های صوتی</span>
+                <label className="win11-toggle">
+                  <input type="checkbox" defaultChecked />
+                  <span className="win11-toggle-slider"></span>
+                </label>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span>به‌روزرسانی خودکار</span>
+                <label className="win11-toggle">
+                  <input type="checkbox" />
+                  <span className="win11-toggle-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="win11-card">
+          <div className="win11-card-header">
+            <h3 className="win11-card-title">اطلاعات سیستم</h3>
+          </div>
+          <div className="win11-card-content">
+            <div style={{ display: 'grid', gap: '8px', fontSize: '14px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>نسخه برنامه:</span>
+                <span>4.0 - شبح حبشی</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>آخرین به‌روزرسانی:</span>
+                <span>{new Date().toLocaleDateString('fa-IR')}</span>
+              </div>
+              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                <span>وضعیت اتصال:</span>
+                <span style={{ color: 'var(--win11-success)' }}>متصل</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function NewDashboard() {
   const { user, logout } = useAuth();
   const [activeTab, setActiveTab] = useState('overview');
