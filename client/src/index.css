@@ -2,6 +2,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Windows 11 styles */
+@import './styles/windows11.css';
+
 /* Import Persian/Arabic fonts */
 @import url('https://fonts.googleapis.com/css2?family=Aref+Ruqaa+Ink:wght@400;700&family=Noto+Naskh+Arabic:wght@400;500;600;700&display=swap');
 
