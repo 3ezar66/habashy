@@ -263,25 +263,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
           </div>
         </div>
 
-        {/* Technical specs display */}
-        <motion.div
-          animate={{ opacity: [0.7, 1, 0.7] }}
-          transition={{ duration: 2, repeat: Infinity }}
-          className="grid grid-cols-3 gap-6 text-center text-xs text-gray-400"
-        >
-          <div>
-            <div className="text-green-400 font-mono">HASH RATE</div>
-            <div className="persian-numbers">2.1 TH/s</div>
-          </div>
-          <div>
-            <div className="text-blue-400 font-mono">NETWORK</div>
-            <div>SCANNING</div>
-          </div>
-          <div>
-            <div className="text-yellow-400 font-mono">POWER</div>
-            <div className="persian-numbers">1.2 kW</div>
-          </div>
-        </motion.div>
+
 
 
       </div>
