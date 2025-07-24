@@ -9,6 +9,7 @@ export default function LoadingScreen({ onComplete }: LoadingScreenProps) {
   const [progress, setProgress] = useState(0);
   const [currentStep, setCurrentStep] = useState(0);
   const [particles, setParticles] = useState<Array<{id: number, x: number, y: number, delay: number}>>([]);
+  const [hasError, setHasError] = useState(false);
 
   const loadingSteps = [
     { text: "آنالیز شبکه‌های بلاک‌چین...", coin: "₿", color: "#f7931a" },
