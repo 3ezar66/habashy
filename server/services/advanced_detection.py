@@ -304,36 +304,7 @@ class AdvancedMinerDetectionSystem:
             peak_indices = scipy.signal.find_peaks(magnitude, height=np.max(magnitude)*0.3)[0]
             dominant_freqs = freqs[peak_indices]
             
-            # Match against signatures
-            for miner_category, miners in self.miner_signatures.items():
-                for miner_type, signature in miners.items():
-                    matches = sum(1 for freq in dominant_freqs 
-                                if any(abs(freq - pattern_freq) < 50 
-                                      for pattern_freq in signature['acoustic_pattern']))
-                    
-                    if matches >= 2:  # At least 2 frequency matches
-                        confidence = (matches / len(signature['acoustic_pattern'])) * signature['confidence_multiplier']
-                        
-                        detection_result = {
-                            'session_id': session_id,
-                            'detection_time': datetime.utcnow(),
-                            'device_id': f"vib_device_{sample_batch}_{int(time.time())}",
-                            'detection_method': 'vibration_pattern_analysis',
-                            'confidence_score': confidence,
-                            'threat_level': self.calculate_threat_level(confidence),
-                            'vibration_pattern': json.dumps({
-                                'dominant_frequencies': dominant_freqs.tolist()[:10],
-                                'pattern_type': signature['vibration_pattern'],
-                                'matched_miner': f"{miner_category}:{miner_type}",
-                                'frequency_matches': matches
-                            }),
-                            'miner_type': miner_type
-                        }
-                        
-                        await self.store_detection(detection_result)
-                        await self.send_real_time_alert(detection_result)
-            
-            await asyncio.sleep(1.0)
+        return
     
     async def electromagnetic_scan_module(self, session_id):
         """Electromagnetic field analysis"""
