@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
-import "../../styles/windows11.css";
+import "../styles/windows11.css";
 
 // Import icons (using simple SVG icons for Windows 11 style)
 const SearchIcon = () => (
