@@ -425,7 +425,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.log(`Starting enhanced Python script: ${pythonScript}`);
       console.log(`Scan config: ${JSON.stringify(scanConfig)}`);
 
-      const pythonProcess = spawn('python3', [
+      // Try python3 first, then python
+      let pythonCmd = 'python3';
+      const pythonProcess = spawn(pythonCmd, [
         pythonScript,
         JSON.stringify(scanConfig)
       ]);
