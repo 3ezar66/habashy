@@ -35,15 +35,15 @@ class MinerDetector:
         }
 
     def scan_ip_range(self, ip_range, ports, timeout=3):
-        """اسکن بازه IP برای پیدا کردن دستگاه‌های فعال"""
+        """اسکن ��ازه IP برای پیدا کردن دستگاه‌های فعال"""
         try:
             network = ipaddress.ip_network(ip_range, strict=False)
             active_devices = []
             
             with ThreadPoolExecutor(max_workers=50) as executor:
-            futures = []
+                futures = []
 
-            for ip in network.hosts():
+                for ip in network.hosts():
                 future = executor.submit(self.scan_device, str(ip), ports, timeout)
                 futures.append(future)
 
