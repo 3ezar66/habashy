@@ -73,7 +73,10 @@ function AdvancedDetectionTab() {
     try {
       const response = await fetch('/api/advanced-detection/start', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           detection_types: ['rf_detection', 'vibration_analysis', 'electromagnetic_scan', 'thermal_imaging', 'acoustic_fingerprinting', 'ai_classification'],
           location: [33.6374, 46.4227],
@@ -218,7 +221,7 @@ function AdvancedDetectionTab() {
                   fontWeight: '500'
                 }}>
                   {module.status === 'scanning' ? 'در حال اسکن' :
-                   module.status === 'completed' ? 'تکمیل ش��ه' :
+                   module.status === 'completed' ? 'تکمیل شده' :
                    module.status === 'error' ? 'خطا' : 'غیرفعال'}
                 </div>
               </div>
@@ -354,7 +357,7 @@ function AlertsTab() {
 
       <div className="win11-card">
         <div className="win11-card-header">
-          <h3 className="win11-card-title">هشدارهای اخیر سیستم</h3>
+          <h3 className="win11-card-title">هشدارهای اخ��ر سیستم</h3>
           <p className="win11-card-subtitle">آخرین اعلان‌ها و هشدارهای تشخیص</p>
         </div>
         <div className="win11-card-content">
