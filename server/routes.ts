@@ -219,8 +219,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Run comprehensive Iran network detection script
       const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
+      console.log(`Starting Python script: ${pythonScript}`);
+
       const pythonProcess = spawn('python3', [pythonScript], {
         stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      pythonProcess.on('error', (error) => {
+        console.error('Failed to start Python process:', error);
+        return res.status(500).json({ error: 'Failed to start Python process: ' + error.message });
       });
 
       // Send comprehensive scan configuration to Python script
