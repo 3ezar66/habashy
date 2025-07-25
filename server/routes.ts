@@ -317,6 +317,183 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Enhanced scan endpoint with IP range configuration and streaming logs
+  app.post("/api/scan", async (req, res) => {
+    try {
+      const { ipRanges, ports, isAutomatic, province, cities } = req.body;
+
+      // Set up streaming response
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // Send initial log
+      res.write(JSON.stringify({
+        type: 'info',
+        ip: 'System',
+        status: 'شروع اسکن شبکه',
+        details: `محدوده‌ها: ${ipRanges?.join(', ')}`
+      }) + '\n');
+
+      // Convert IP ranges to scan format
+      const processedRanges = ipRanges?.map((range: string) => {
+        if (range.includes('-')) {
+          // Range format: 192.168.1.1-192.168.1.254
+          const [startIp, endIp] = range.split('-');
+          return { start: startIp.trim(), end: endIp.trim() };
+        } else {
+          // Single IP
+          return { start: range.trim(), end: range.trim() };
+        }
+      }) || [];
+
+      // Enhance scan configuration with Iran-specific data
+      const scanConfig = {
+        ip_ranges: processedRanges,
+        ports: ports || [22, 80, 443, 4028, 8080, 9999],
+        isAutomatic: isAutomatic || false,
+        province: province || 'ilam',
+        cities: cities || []
+      };
+
+      // Create scan session
+      const session = await storage.createScanSession({
+        sessionType: 'enhanced_network',
+        ipRange: ipRanges?.join(';') || '192.168.1.0/24',
+        status: 'running'
+      });
+
+      res.write(JSON.stringify({
+        type: 'info',
+        ip: 'System',
+        status: 'جلسه اسکن ایجاد شد',
+        details: `شناسه جلسه: ${session.id}`
+      }) + '\n');
+
+      // Start iranNetworkDetector.py with enhanced parameters
+      const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
+      const pythonProcess = spawn('python3', [
+        pythonScript,
+        JSON.stringify(scanConfig)
+      ]);
+
+      const results: any[] = [];
+      let scanOutput = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        scanOutput += output;
+
+        try {
+          const lines = output.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            if (line.startsWith('{')) {
+              const result = JSON.parse(line);
+              results.push(result);
+
+              // Stream the result to client
+              res.write(JSON.stringify({
+                type: result.suspicion_score > 0.7 ? 'warning' : 'info',
+                ip: result.ip,
+                port: result.port,
+                status: result.status || 'پاسخ دریافت شد',
+                details: `امتیاز مشکوک: ${result.suspicion_score || 0}`
+              }) + '\n');
+            } else if (line.includes('Scanning')) {
+              // Stream scanning progress
+              res.write(JSON.stringify({
+                type: 'info',
+                ip: 'Scanner',
+                status: line
+              }) + '\n');
+            }
+          }
+        } catch (e) {
+          // Non-JSON output, send as info
+          if (output.trim()) {
+            res.write(JSON.stringify({
+              type: 'info',
+              ip: 'System',
+              status: output.trim()
+            }) + '\n');
+          }
+        }
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        const error = data.toString();
+        console.error('Python script error:', error);
+        res.write(JSON.stringify({
+          type: 'error',
+          ip: 'System',
+          status: 'خطای اسکریپت پایتون',
+          details: error
+        }) + '\n');
+      });
+
+      pythonProcess.on('close', async (code) => {
+        try {
+          // Store results in database
+          for (const result of results) {
+            await storage.createMiner({
+              ip: result.ip,
+              location: result.location || 'Unknown',
+              suspicionScore: result.suspicion_score || 0,
+              lastSeen: new Date(),
+              detectionMethod: 'network_scan',
+              details: JSON.stringify(result)
+            });
+          }
+
+          // Update scan session
+          await storage.updateScanSession(session.id, {
+            status: 'completed',
+            endTime: new Date(),
+            devicesFound: results.length
+          });
+
+          // Send completion message
+          res.write(JSON.stringify({
+            type: 'success',
+            ip: 'System',
+            status: 'اسکن کامل شد',
+            details: `${results.length} دستگاه مشکوک یافت شد`
+          }) + '\n');
+
+          // Broadcast scan completion
+          broadcast({
+            type: 'scan_completed',
+            data: { sessionId: session.id, results }
+          });
+
+        } catch (error) {
+          console.error('Error storing scan results:', error);
+          res.write(JSON.stringify({
+            type: 'error',
+            ip: 'System',
+            status: 'خطا در ذخیره نتایج',
+            details: error instanceof Error ? error.message : 'خطای ناشناخته'
+          }) + '\n');
+        } finally {
+          res.end();
+        }
+      });
+
+    } catch (error) {
+      console.error('Scan error:', error);
+      res.write(JSON.stringify({
+        type: 'error',
+        ip: 'System',
+        status: 'خطا در شروع اسکن',
+        details: error instanceof Error ? error.message : 'خطای ناشناخته'
+      }) + '\n');
+      res.end();
+    }
+  });
+
   // Start network scan
   app.post("/api/scan/network", async (req, res) => {
     try {
