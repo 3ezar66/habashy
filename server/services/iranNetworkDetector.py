@@ -45,7 +45,7 @@ class IranNetworkDetector:
             'isfahan': {
                 'name': 'استان اصفهان',
                 'center': {'lat': 32.6546, 'lng': 51.6680}, 
-                'cities': ['اصفهان', 'کاشان', 'نجف‌آباد', 'خمینی‌شهر', 'شاهین‌شهر'],
+                'cities': ['اصفهان', 'کاشان', 'نجف‌آباد', 'خمینی‌شهر', 'شا��ین‌شهر'],
                 'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
             }
         }
@@ -146,55 +146,112 @@ class IranNetworkDetector:
         
         return None
 
+    def expand_ip_range(self, range_config):
+        """Expand IP range to list of IPs"""
+        start_ip = range_config.get('start', '192.168.1.1')
+        end_ip = range_config.get('end', start_ip)
+
+        ips = []
+
+        try:
+            # Parse start and end IPs
+            start_parts = [int(x) for x in start_ip.split('.')]
+            end_parts = [int(x) for x in end_ip.split('.')]
+
+            # For simplicity, handle ranges within same subnet (first 3 octets same)
+            if start_parts[:3] == end_parts[:3]:
+                base = '.'.join(map(str, start_parts[:3]))
+                for i in range(start_parts[3], min(end_parts[3] + 1, 255)):
+                    ips.append(f"{base}.{i}")
+            else:
+                # Handle cross-subnet ranges (limited implementation)
+                ips.append(start_ip)
+                if start_ip != end_ip:
+                    ips.append(end_ip)
+
+            return ips[:50]  # Limit for performance
+
+        except Exception as e:
+            print(f"Error expanding IP range {start_ip}-{end_ip}: {e}")
+            return [start_ip]
+
     def scan_network_comprehensive(self, config):
         """Comprehensive network scan with Iran-specific detection"""
-        
-        ip_range = config.get('ip_range', '192.168.1.0/24')
+
+        ip_ranges = config.get('ip_ranges', [{'start': '192.168.1.1', 'end': '192.168.1.254'}])
         ports = config.get('ports', [22, 80, 443, 4028, 8080, 9999, 3333, 8332])
         timeout = config.get('timeout', 3)
         province = config.get('province', 'ilam')
-        
+        is_automatic = config.get('isAutomatic', False)
+
         detected_devices = []
-        
+        all_ips_to_scan = []
+
         try:
-            network = ipaddress.ip_network(ip_range, strict=False)
-            
+            # Expand all IP ranges
+            for range_config in ip_ranges:
+                range_ips = self.expand_ip_range(range_config)
+                all_ips_to_scan.extend(range_ips)
+                print(f"Range {range_config.get('start')}-{range_config.get('end')}: {len(range_ips)} IPs")
+
+            print(f"Total IPs to scan: {len(all_ips_to_scan)}")
+
             # Use thread pool for faster scanning
-            with ThreadPoolExecutor(max_workers=100) as executor:
+            with ThreadPoolExecutor(max_workers=50) as executor:
                 futures = []
-                
-                for ip in network.hosts():
-                    future = executor.submit(self.scan_device_advanced, str(ip), ports, timeout, province)
+
+                for ip in all_ips_to_scan:
+                    future = executor.submit(self.scan_device_advanced, ip, ports, timeout, province)
                     futures.append(future)
-                
-                for future in as_completed(futures):
+
+                # Process results as they complete
+                for i, future in enumerate(as_completed(futures)):
                     try:
-                        result = future.result()
+                        result = future.result(timeout=10)
                         if result and result.get('is_active'):
                             detected_devices.append(result)
+                            # Output result immediately for streaming
+                            output_result = {
+                                'ip': result['ip_address'],
+                                'ports': result['open_ports'],
+                                'location': result.get('geolocation', {}),
+                                'mining_evidence': result.get('mining_indicators', {}),
+                                'suspicion_score': result.get('threat_assessment', {}).get('suspicion_score', 0),
+                                'timestamp': result['detection_timestamp'],
+                                'detection_method': 'iran_network_scan',
+                                'status': 'فعال' if result['open_ports'] else 'غیرفعال'
+                            }
+                            print(json.dumps(output_result, ensure_ascii=False))
+
+                        # Progress update
+                        if (i + 1) % 10 == 0:
+                            print(f"Progress: {i + 1}/{len(all_ips_to_scan)} IPs scanned")
+
                     except Exception as e:
+                        print(f"Error processing scan result: {e}")
                         continue
-            
+
             # Analyze and store results
             analysis_results = self.analyze_detection_results(detected_devices)
-            
+
             # Store in database
             self.store_scan_results(detected_devices, config)
-            
+
             return {
                 'status': 'completed',
                 'total_devices': len(detected_devices),
-                'miners_found': analysis_results['miners_found'],
-                'suspicious_devices': analysis_results['suspicious_devices'],
+                'miners_found': analysis_results.get('miners_found', 0),
+                'suspicious_devices': analysis_results.get('suspicious_devices', 0),
                 'detected_devices': detected_devices,
                 'analysis': analysis_results,
                 'scan_config': config,
                 'timestamp': datetime.now().isoformat()
             }
-            
+
         except Exception as e:
+            print(f"Scan error: {e}")
             return {
-                'status': 'failed', 
+                'status': 'failed',
                 'error': str(e),
                 'timestamp': datetime.now().isoformat()
             }
