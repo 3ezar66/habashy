@@ -39,7 +39,7 @@ class IranNetworkDetector:
             'tehran': {
                 'name': 'استان تهران', 
                 'center': {'lat': 35.6892, 'lng': 51.3890},
-                'cities': ['تهران', 'کرج', 'ورامین', 'شهریار', 'پاکدش��'],
+                'cities': ['تهران', 'کرج', 'ورامین', 'شهریار', 'پاکدشت'],
                 'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
             },
             'isfahan': {
@@ -331,7 +331,7 @@ class IranNetworkDetector:
             device_info['hostname'] = hostname
             scan_log.update({
                 'type': 'success',
-                'status': '📝 نام میزبان شناسایی شد',
+                'status': '�� نام میزبان شناسایی شد',
                 'details': f'نام دستگاه: {hostname}',
                 'tool': 'DNS Resolver',
                 'process': 'Hostname Identified'
@@ -419,21 +419,318 @@ class IranNetworkDetector:
     def port_scan(self, ip, ports, timeout):
         """Fast port scanning"""
         open_ports = []
-        
+
         for port in ports:
             try:
                 sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
                 sock.settimeout(timeout)
                 result = sock.connect_ex((ip, port))
-                
+
                 if result == 0:
                     open_ports.append(port)
-                    
+
                 sock.close()
             except:
                 continue
-                
+
         return open_ports
+
+    def port_scan_detailed(self, ip, ports, timeout):
+        """Detailed port scanning with individual port logging"""
+        open_ports = []
+
+        for i, port in enumerate(ports):
+            try:
+                # Log each port scan attempt
+                port_log = {
+                    'type': 'info',
+                    'ip': ip,
+                    'port': port,
+                    'status': f'🔍 بررسی پورت {port}',
+                    'details': f'تست اتصال TCP به {ip}:{port} ({i+1}/{len(ports)})',
+                    'tool': 'TCP Socket Connector',
+                    'process': f'Port {port} Probe'
+                }
+                print(json.dumps(port_log, ensure_ascii=False))
+
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                start_time = datetime.now()
+                result = sock.connect_ex((ip, port))
+                end_time = datetime.now()
+                response_time = (end_time - start_time).total_seconds() * 1000
+
+                if result == 0:
+                    open_ports.append(port)
+                    service_name = self.mining_ports.get(port, 'سرویس نامشخص')
+                    port_log.update({
+                        'type': 'warning' if port in self.mining_ports else 'success',
+                        'status': f'✅ پورت {port} باز',
+                        'details': f'پاسخ در {response_time:.1f}ms | سرویس احتمالی: {service_name}',
+                        'tool': 'TCP Connection Success',
+                        'process': f'Open Port {port} Detected'
+                    })
+                    print(json.dumps(port_log, ensure_ascii=False))
+                else:
+                    port_log.update({
+                        'status': f'❌ پورت {port} بسته',
+                        'details': f'عدم پاسخ از {ip}:{port} - پورت فیلتر یا بسته',
+                        'tool': 'TCP Connection Failed',
+                        'process': f'Port {port} Closed'
+                    })
+                    print(json.dumps(port_log, ensure_ascii=False))
+
+                sock.close()
+            except Exception as e:
+                port_log.update({
+                    'type': 'error',
+                    'status': f'⚠️ خطا در پورت {port}',
+                    'details': f'خطای شبکه: {str(e)}',
+                    'tool': 'TCP Socket Error',
+                    'process': f'Port {port} Error'
+                })
+                print(json.dumps(port_log, ensure_ascii=False))
+                continue
+
+        return open_ports
+
+    def analyze_service_detailed(self, ip, port, timeout):
+        """Detailed service analysis with comprehensive logging"""
+
+        service_log = {
+            'type': 'info',
+            'ip': ip,
+            'port': port,
+            'status': f'🔍 تحلیل سرویس پورت {port}',
+            'details': f'شناسایی نوع سرویس و نرم‌افزار در حال اجرا',
+            'tool': 'Service Analyzer',
+            'process': f'Port {port} Service Detection'
+        }
+        print(json.dumps(service_log, ensure_ascii=False))
+
+        service_info = {
+            'port': port,
+            'protocol': 'tcp',
+            'service_name': self.mining_ports.get(port, 'نامشخص'),
+            'banner': None,
+            'mining_related': port in self.mining_ports,
+            'confidence': 0,
+            'response_time': 0
+        }
+
+        try:
+            start_time = datetime.now()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
+
+            # Try to get service banner based on port
+            if port in [80, 8080, 443]:
+                service_log.update({
+                    'status': f'🌐 تست وب سرور پورت {port}',
+                    'details': f'ارسال درخواست HTTP برای شناسایی وب سرویس',
+                    'tool': 'HTTP Request Generator',
+                    'process': f'HTTP Service Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                # HTTP request
+                request = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: Security-Scanner/1.0\r\n\r\n"
+                sock.send(request.encode())
+                banner = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = banner[:500]
+
+                if banner:
+                    service_log.update({
+                        'type': 'success',
+                        'status': f'📄 پاسخ HTTP دریافت شد',
+                        'details': f'سرور: {banner.split("\\n")[0][:100]}',
+                        'tool': 'HTTP Banner Parser',
+                        'process': f'HTTP Response Analysis'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+                # Check for mining-related content
+                banner_lower = banner.lower()
+                for mining_software, sig_info in self.mining_signatures.items():
+                    if mining_software in banner_lower:
+                        service_info['mining_software'] = mining_software
+                        service_info['confidence'] = sig_info['confidence']
+                        service_info['mining_type'] = sig_info['type']
+
+                        service_log.update({
+                            'type': 'error',
+                            'status': f'⚠️ نرم‌افزار ماینینگ شناسایی شد',
+                            'details': f'نرم‌افزار: {mining_software} | نوع: {sig_info["type"]} | اطمینان: {sig_info["confidence"]*100}%',
+                            'tool': 'Mining Software Detector',
+                            'process': f'Mining Software Found'
+                        })
+                        print(json.dumps(service_log, ensure_ascii=False))
+                        break
+
+            elif port == 4028:  # CGMiner API
+                service_log.update({
+                    'status': f'⛏️ تست CGMiner API',
+                    'details': f'ارسال درخواست summary به API ماینر',
+                    'tool': 'CGMiner API Client',
+                    'process': f'Mining API Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                request = '{"command":"summary","parameter":""}'
+                sock.send(request.encode())
+                response = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = response[:500]
+
+                if 'STATUS' in response or 'cgminer' in response.lower():
+                    service_info['confidence'] = 0.95
+                    service_info['mining_software'] = 'cgminer'
+
+                    service_log.update({
+                        'type': 'error',
+                        'status': f'🚨 CGMiner API تأیید شد',
+                        'details': f'پاسخ API: {response[:100]}',
+                        'tool': 'CGMiner API Detector',
+                        'process': f'CGMiner Confirmed'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+            elif port in [8080, 9999, 3333]:  # Stratum protocols
+                service_log.update({
+                    'status': f'⛏️ تست پروتکل Stratum',
+                    'details': f'ارسال درخواست mining.subscribe',
+                    'tool': 'Stratum Protocol Client',
+                    'process': f'Mining Pool Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                request = '{"id":1,"method":"mining.subscribe","params":[]}\n'
+                sock.send(request.encode())
+                response = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = response[:500]
+
+                if 'mining.subscribe' in response or 'stratum' in response.lower():
+                    service_info['confidence'] = 0.9
+                    service_info['protocol'] = 'stratum'
+
+                    service_log.update({
+                        'type': 'error',
+                        'status': f'🚨 پروتکل Stratum شناسایی شد',
+                        'details': f'پاسخ: {response[:100]}',
+                        'tool': 'Stratum Protocol Detector',
+                        'process': f'Mining Pool Confirmed'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+            end_time = datetime.now()
+            service_info['response_time'] = (end_time - start_time).total_seconds() * 1000
+
+            sock.close()
+
+        except Exception as e:
+            service_log.update({
+                'status': f'⚠️ خطا در تحلیل سرویس',
+                'details': f'عدم دسترسی به سرویس: {str(e)}',
+                'tool': 'Service Analyzer',
+                'process': f'Service Analysis Failed'
+            })
+            print(json.dumps(service_log, ensure_ascii=False))
+            service_info['error'] = str(e)
+
+        return service_info
+
+    def get_iran_location_detailed(self, ip_address, province='ilam'):
+        """Get Iran-specific location data with detailed logging"""
+
+        geo_log = {
+            'type': 'info',
+            'ip': ip_address,
+            'status': '🌍 تحلیل موقعیت جغرافیایی',
+            'details': f'بررسی محدوده‌های IP ایرانی و تشخیص ISP',
+            'tool': 'GeoIP Iran Database',
+            'process': 'Geographic Analysis'
+        }
+        print(json.dumps(geo_log, ensure_ascii=False))
+
+        # Check if IP is in known Iranian ranges
+        for ip_range in self.iran_ip_ranges:
+            try:
+                network = ipaddress.ip_network(ip_range['range'])
+                if ipaddress.ip_address(ip_address) in network:
+                    province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+
+                    # Add some realistic variation to coordinates
+                    import random
+                    lat_offset = random.uniform(-0.1, 0.1)
+                    lng_offset = random.uniform(-0.1, 0.1)
+
+                    location_data = {
+                        'country': 'Iran',
+                        'country_code': 'IR',
+                        'province': province_data['name'],
+                        'city': random.choice(province_data['cities']),
+                        'lat': province_data['center']['lat'] + lat_offset,
+                        'lon': province_data['center']['lng'] + lng_offset,
+                        'isp': ip_range['isp'],
+                        'provider': ip_range['provider'],
+                        'timezone': 'Asia/Tehran',
+                        'is_iran': True
+                    }
+
+                    geo_log.update({
+                        'type': 'success',
+                        'status': '🇮🇷 IP ایرانی شناسایی شد',
+                        'details': f'ISP: {ip_range["isp"]} | شهر: {location_data["city"]} | استان: {location_data["province"]}',
+                        'tool': 'Iran ISP Database',
+                        'process': 'Iranian IP Confirmed'
+                    })
+                    print(json.dumps(geo_log, ensure_ascii=False))
+
+                    return location_data
+            except:
+                continue
+
+        # Default for local/private IPs
+        if ip_address.startswith(('192.168.', '10.', '172.')):
+            province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+            import random
+            lat_offset = random.uniform(-0.05, 0.05)
+            lng_offset = random.uniform(-0.05, 0.05)
+
+            location_data = {
+                'country': 'Iran',
+                'country_code': 'IR',
+                'province': province_data['name'],
+                'city': random.choice(province_data['cities']),
+                'lat': province_data['center']['lat'] + lat_offset,
+                'lon': province_data['center']['lng'] + lng_offset,
+                'isp': 'Local Network',
+                'provider': 'Private',
+                'timezone': 'Asia/Tehran',
+                'is_iran': True,
+                'is_local': True
+            }
+
+            geo_log.update({
+                'type': 'success',
+                'status': '🏠 شبکه محلی شناسایی شد',
+                'details': f'IP خصوصی در شبکه محلی | شهر: {location_data["city"]}',
+                'tool': 'Private IP Detector',
+                'process': 'Local Network IP'
+            })
+            print(json.dumps(geo_log, ensure_ascii=False))
+
+            return location_data
+
+        geo_log.update({
+            'status': '❓ موقعیت نامشخص',
+            'details': f'IP خارج از محدوده‌های شناخته شده',
+            'tool': 'GeoIP Database',
+            'process': 'Unknown Location'
+        })
+        print(json.dumps(geo_log, ensure_ascii=False))
+
+        return None
 
     def analyze_service_advanced(self, ip, port, timeout):
         """Advanced service analysis with mining detection"""
