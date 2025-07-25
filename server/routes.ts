@@ -192,11 +192,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
-      // Send scan configuration to Python script
+      // Send comprehensive scan configuration to Python script
       const scanConfig = {
         ip_range: ipRange || '192.168.1.0/24',
-        ports: Array.isArray(ports) ? ports : (ports ? ports.split(',').map((p: string) => parseInt(p.trim())) : [22, 80, 443, 4028, 8080, 9999]),
-        timeout: timeout || 3
+        ports: Array.isArray(ports) ? ports : (ports ? ports.split(',').map((p: string) => parseInt(p.trim())) : [22, 80, 443, 4028, 8080, 9999, 3333, 8332, 8333, 9332, 9333, 14433, 18080, 30303, 8545]),
+        timeout: timeout || 3,
+        province: 'ilam', // Default to Ilam province
+        enable_geolocation: true,
+        deep_analysis: true
       };
 
       pythonProcess.stdin.write(JSON.stringify(scanConfig));
