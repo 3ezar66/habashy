@@ -420,10 +420,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Start iranNetworkDetector.py with enhanced parameters
       const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
+      console.log(`Starting enhanced Python script: ${pythonScript}`);
+      console.log(`Scan config: ${JSON.stringify(scanConfig)}`);
+
       const pythonProcess = spawn('python3', [
         pythonScript,
         JSON.stringify(scanConfig)
       ]);
+
+      pythonProcess.on('error', (error) => {
+        console.error('Failed to start enhanced Python process:', error);
+        res.write(JSON.stringify({
+          type: 'error',
+          ip: 'System',
+          status: 'خطا در شروع فرایند Python',
+          details: error.message
+        }) + '\n');
+        res.end();
+      });
 
       const results: any[] = [];
       let scanOutput = '';
