@@ -265,10 +265,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       pythonProcess.stderr.on('data', (data) => {
         errorOutput += data.toString();
+        console.error('Python stderr:', data.toString());
       });
 
       pythonProcess.on('close', async (code) => {
         try {
+          console.log(`Python process closed with code: ${code}`);
+          console.log(`Python output: ${output.substring(0, 500)}...`);
+          console.log(`Python errors: ${errorOutput}`);
+
           if (code === 0 && output) {
             const results = JSON.parse(output);
             
