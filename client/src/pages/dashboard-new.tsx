@@ -272,7 +272,7 @@ function MapTab() {
   return (
     <div className="win11-animate-in">
       <h1 style={{ fontSize: '28px', fontWeight: '600', marginBottom: '24px' }}>
-        نقشه تشخیص‌ها
+        نقشه هوشمند تشخیص‌ها
       </h1>
 
       <div className="win11-card">
@@ -295,7 +295,7 @@ function MapTab() {
             <div style={{ textAlign: 'center', zIndex: 2 }}>
               <div style={{ fontSize: '48px', marginBottom: '16px' }}>🗺️</div>
               <h3>نقشه اس��ان ایلام</h3>
-              <p>موقعیت ماینرهای تشخیص داده شده</p>
+              <p>موقعیت مای��رهای تشخیص داده شده</p>
 
               {/* Simulated map points */}
               <div style={{ position: 'absolute', top: '30%', left: '40%', background: 'red', width: '10px', height: '10px', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
