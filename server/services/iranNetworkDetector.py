@@ -331,7 +331,7 @@ class IranNetworkDetector:
             device_info['hostname'] = hostname
             scan_log.update({
                 'type': 'success',
-                'status': '�� نام میزبان شناسایی شد',
+                'status': '📝 نام میزبان شناسایی شد',
                 'details': f'نام دستگاه: {hostname}',
                 'tool': 'DNS Resolver',
                 'process': 'Hostname Identified'
@@ -364,7 +364,7 @@ class IranNetworkDetector:
         # Step 4: Mining detection analysis
         scan_log.update({
             'status': '⛏️ تحلیل نشانه‌های ماینینگ',
-            'details': f'بررسی پورت‌ها، سرویس‌ها و پروتکل‌ها برای شناسایی فعالیت ماینینگ',
+            'details': f'بررسی پورت‌ها�� سرویس‌ها و پروتکل‌ها برای شناسایی فعالیت ماینینگ',
             'tool': 'Mining Detection Algorithm',
             'process': 'Crypto Mining Analysis'
         })
@@ -795,7 +795,7 @@ class IranNetworkDetector:
 
     def detect_mining_activity(self, device_info):
         """Comprehensive mining activity detection"""
-        
+
         mining_indicators = {
             'mining_ports_found': [],
             'mining_software_detected': [],
@@ -804,9 +804,9 @@ class IranNetworkDetector:
             'threat_level': 'low',
             'indicators': []
         }
-        
+
         confidence = 0
-        
+
         # Check for mining-specific ports
         for port in device_info['open_ports']:
             if port in self.mining_ports:
@@ -816,7 +816,7 @@ class IranNetworkDetector:
                 })
                 confidence += 25
                 mining_indicators['indicators'].append(f'Mining port {port} detected')
-        
+
         # Analyze services for mining software
         for port, service in device_info['services'].items():
             if service.get('mining_software'):
@@ -827,7 +827,7 @@ class IranNetworkDetector:
                 })
                 confidence += service.get('confidence', 0) * 100
                 mining_indicators['indicators'].append(f'Mining software: {service["mining_software"]}')
-        
+
         # Hostname analysis
         if device_info.get('hostname'):
             hostname = device_info['hostname'].lower()
@@ -836,19 +836,19 @@ class IranNetworkDetector:
                     confidence += 30
                     mining_indicators['indicators'].append(f'Mining-related hostname: {hostname}')
                     break
-        
+
         # Port pattern analysis
         suspicious_patterns = [
             [4028, 8080],  # CGMiner + Stratum
             [3333, 8332],  # Bitcoin mining
             [8080, 9999],  # Common mining pools
         ]
-        
+
         for pattern in suspicious_patterns:
             if all(port in device_info['open_ports'] for port in pattern):
                 confidence += 20
                 mining_indicators['indicators'].append(f'Suspicious port pattern: {pattern}')
-        
+
         # Determine threat level
         if confidence >= 80:
             mining_indicators['threat_level'] = 'critical'
@@ -858,10 +858,333 @@ class IranNetworkDetector:
             mining_indicators['threat_level'] = 'medium'
         else:
             mining_indicators['threat_level'] = 'low'
-        
+
         mining_indicators['confidence_score'] = min(confidence, 100)
-        
+
         return mining_indicators
+
+    def detect_mining_activity_comprehensive(self, device_info):
+        """Comprehensive mining detection with detailed step-by-step logging"""
+
+        mining_log = {
+            'type': 'info',
+            'ip': device_info['ip_address'],
+            'status': '⛏️ شروع تحلیل ماینینگ',
+            'details': f'بررسی نشانه‌های فعالیت ماینینگ بر روی {len(device_info["open_ports"])} پورت باز',
+            'tool': 'Mining Detection Engine',
+            'process': 'Mining Signature Analysis'
+        }
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        mining_indicators = {
+            'mining_ports_found': [],
+            'mining_software_detected': [],
+            'confidence_score': 0,
+            'mining_type': 'نامشخص',
+            'threat_level': 'پایین',
+            'indicators': [],
+            'risk_factors': []
+        }
+
+        confidence_points = []
+
+        # Step 1: Mining port analysis
+        mining_log.update({
+            'status': '🔍 بررسی پورت‌های ماینینگ',
+            'details': f'تطبیق پورت‌های باز با پایگاه داده پورت‌های ماینینگ',
+            'tool': 'Mining Port Database',
+            'process': 'Port Signature Matching'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        for port in device_info['open_ports']:
+            if port in self.mining_ports:
+                mining_indicators['mining_ports_found'].append({
+                    'port': port,
+                    'service': self.mining_ports[port]
+                })
+                confidence_points.append(('پورت ماینینگ', 25))
+                mining_indicators['indicators'].append(f'پورت ماینینگ {port}: {self.mining_ports[port]}')
+
+                mining_log.update({
+                    'type': 'warning',
+                    'port': port,
+                    'status': f'🚨 پورت ماینینگ یافت شد',
+                    'details': f'پورت {port}: {self.mining_ports[port]} - امتیاز: +25',
+                    'tool': 'Mining Port Detector',
+                    'process': f'Mining Port {port} Identified'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 2: Service banner analysis
+        mining_log.update({
+            'status': '📄 تحلیل banner سرویس‌ها',
+            'details': f'بررسی نرم‌افزارهای شناسایی شده برای نشانه‌های ماینینگ',
+            'tool': 'Service Banner Analyzer',
+            'process': 'Software Signature Detection'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        for port, service in device_info['services'].items():
+            if service.get('mining_software'):
+                mining_indicators['mining_software_detected'].append({
+                    'software': service['mining_software'],
+                    'confidence': service.get('confidence', 0),
+                    'type': service.get('mining_type', 'نامشخص'),
+                    'port': port
+                })
+                software_confidence = service.get('confidence', 0) * 100
+                confidence_points.append(('نرم‌افزار ماینینگ', software_confidence))
+                mining_indicators['indicators'].append(f'نرم‌افزار ماینینگ: {service["mining_software"]}')
+
+                mining_log.update({
+                    'type': 'error',
+                    'port': port,
+                    'status': f'🚨 نرم‌افزار ماینینگ شناسا��ی شد',
+                    'details': f'{service["mining_software"]} روی پورت {port} - اطمینان: {service.get("confidence", 0)*100}%',
+                    'tool': 'Mining Software Detector',
+                    'process': f'Mining Software Confirmed'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 3: Hostname analysis
+        if device_info.get('hostname'):
+            mining_log.update({
+                'status': '🏷️ تحلیل نام میزبان',
+                'details': f'بررسی نام میزبان "{device_info["hostname"]}" برای کلمات کلیدی ماینینگ',
+                'tool': 'Hostname Pattern Matcher',
+                'process': 'Hostname Signature Analysis'
+            })
+            print(json.dumps(mining_log, ensure_ascii=False))
+
+            hostname = device_info['hostname'].lower()
+            for mining_software in self.mining_signatures.keys():
+                if mining_software in hostname:
+                    confidence_points.append(('نام میزبان مشکوک', 30))
+                    mining_indicators['indicators'].append(f'نام میزبان مشکوک: {hostname}')
+
+                    mining_log.update({
+                        'type': 'warning',
+                        'status': f'⚠️ نام میزبان مشکوک',
+                        'details': f'نام "{hostname}" حاوی کلمه کلیدی "{mining_software}" - امتیاز: +30',
+                        'tool': 'Hostname Analyzer',
+                        'process': 'Suspicious Hostname Pattern'
+                    })
+                    print(json.dumps(mining_log, ensure_ascii=False))
+                    break
+
+        # Step 4: Port pattern analysis
+        mining_log.update({
+            'status': '🔗 تحلیل الگوی پورت‌ها',
+            'details': f'بررسی ترکیبات مشکوک پورت‌های باز',
+            'tool': 'Port Pattern Analyzer',
+            'process': 'Suspicious Port Combinations'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        suspicious_patterns = [
+            ([4028, 8080], 'CGMiner + Stratum'),
+            ([3333, 8332], 'Bitcoin Mining'),
+            ([8080, 9999], 'Mining Pool Common'),
+            ([4028, 3333], 'ASIC + Pool')
+        ]
+
+        for pattern, description in suspicious_patterns:
+            if all(port in device_info['open_ports'] for port in pattern):
+                confidence_points.append(('الگوی پورت مشکوک', 25))
+                mining_indicators['indicators'].append(f'الگوی پورت مشکوک: {pattern} ({description})')
+
+                mining_log.update({
+                    'type': 'warning',
+                    'status': f'🔗 الگوی پورت مشکوک',
+                    'details': f'ترکیب {pattern}: {description} - امتیاز: +25',
+                    'tool': 'Pattern Matcher',
+                    'process': f'Suspicious Pattern Detected'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 5: Calculate final confidence score
+        total_confidence = sum(point[1] for point in confidence_points)
+        mining_indicators['confidence_score'] = min(total_confidence, 100)
+
+        # Determine threat level
+        if total_confidence >= 80:
+            mining_indicators['threat_level'] = 'بحرانی'
+            threat_color = 'error'
+        elif total_confidence >= 60:
+            mining_indicators['threat_level'] = 'بالا'
+            threat_color = 'error'
+        elif total_confidence >= 40:
+            mining_indicators['threat_level'] = 'متوسط'
+            threat_color = 'warning'
+        else:
+            mining_indicators['threat_level'] = 'پایین'
+            threat_color = 'success'
+
+        # Final mining analysis report
+        mining_log.update({
+            'type': threat_color,
+            'status': f'📊 تحلیل ماینینگ کامل شد',
+            'details': f'امتیاز نهایی: {total_confidence}/100 | سطح تهدید: {mining_indicators["threat_level"]} | عوامل: {len(confidence_points)}',
+            'tool': 'Mining Analysis Report',
+            'process': 'Final Mining Assessment'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        return mining_indicators
+
+    def assess_mining_threat_detailed(self, device_info):
+        """Detailed threat assessment with comprehensive logging"""
+
+        threat_log = {
+            'type': 'info',
+            'ip': device_info['ip_address'],
+            'status': '🛡️ شروع ارزیابی تهدید',
+            'details': f'تحلیل جامع ریسک امنیتی و تعیین سطح تهدید',
+            'tool': 'Threat Assessment Engine',
+            'process': 'Security Risk Evaluation'
+        }
+        print(json.dumps(threat_log, ensure_ascii=False))
+
+        threat_assessment = {
+            'is_miner': False,
+            'suspicion_score': 0,
+            'threat_level': 'پایین',
+            'risk_factors': [],
+            'recommendations': [],
+            'confidence_breakdown': {}
+        }
+
+        try:
+            mining_indicators = device_info.get('mining_indicators', {})
+            mining_confidence = mining_indicators.get('confidence_score', 0)
+
+            # Calculate suspicion score (0-1 scale)
+            threat_assessment['suspicion_score'] = mining_confidence / 100.0
+            threat_assessment['confidence_breakdown'] = {
+                'mining_ports': len(mining_indicators.get('mining_ports_found', [])),
+                'mining_software': len(mining_indicators.get('mining_software_detected', [])),
+                'open_ports_total': len(device_info.get('open_ports', [])),
+                'has_hostname': bool(device_info.get('hostname'))
+            }
+
+            # Step 1: Basic threat classification
+            if mining_confidence >= 70:
+                threat_assessment['is_miner'] = True
+                threat_assessment['threat_level'] = 'بحرانی'
+
+                threat_log.update({
+                    'type': 'error',
+                    'status': '🚨 ماینر تأیید شد',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - دستگاه به عنوان ماینر شناسایی شد',
+                    'tool': 'Miner Classifier',
+                    'process': 'Confirmed Miner Detection'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                # Add high-risk factors
+                if mining_indicators.get('mining_ports_found'):
+                    threat_assessment['risk_factors'].append('پورت‌های فعال ماینینگ تشخیص داده شد')
+
+                if mining_indicators.get('mining_software_detected'):
+                    threat_assessment['risk_factors'].append('نرم‌افزار ماینینگ شناسایی شد')
+
+                # Add critical recommendations
+                threat_assessment['recommendations'] = [
+                    'بلاک کردن فوری ترافیک شبکه مرتبط با ماینینگ',
+                    'بررسی مالک دستگاه و دریافت توضیحات',
+                    'نظارت بر مصرف برق و عملکرد شبکه',
+                    'بازرسی فیزیکی دستگاه برای سخت‌افزار غیرمجاز'
+                ]
+
+            elif mining_confidence >= 40:
+                threat_assessment['threat_level'] = 'متوسط'
+
+                threat_log.update({
+                    'type': 'warning',
+                    'status': '⚠️ دستگاه مشکوک',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - نیاز به نظارت بیشتر',
+                    'tool': 'Suspicious Device Classifier',
+                    'process': 'Medium Risk Assessment'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                threat_assessment['recommendations'] = [
+                    'نظارت نزدیک بر فعالیت دستگاه',
+                    'بررسی دوره‌ای پورت‌های باز',
+                    'کنترل ترافیک شبکه غیرعادی'
+                ]
+
+            else:
+                threat_assessment['threat_level'] = 'پایین'
+
+                threat_log.update({
+                    'type': 'success',
+                    'status': '✅ دستگاه عادی',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - ریسک پایین',
+                    'tool': 'Normal Device Classifier',
+                    'process': 'Low Risk Assessment'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                threat_assessment['recommendations'] = ['نظارت معمول کافی است']
+
+            # Step 2: Additional risk factor analysis
+            threat_log.update({
+                'status': '🔍 تحلیل عوامل ریسک اضافی',
+                'details': f'ب��رسی سایر شاخص‌های امنیتی',
+                'tool': 'Risk Factor Analyzer',
+                'process': 'Additional Risk Assessment'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+
+            # Check for unusual port combinations
+            high_risk_ports = [4028, 8080, 9999, 3333, 8332]
+            high_risk_count = len([p for p in device_info.get('open_ports', []) if p in high_risk_ports])
+
+            if high_risk_count >= 3:
+                threat_assessment['risk_factors'].append(f'تعداد زیاد پورت‌های پرخطر ({high_risk_count})')
+
+                threat_log.update({
+                    'type': 'warning',
+                    'status': f'⚠️ پورت‌های پرخطر متعدد',
+                    'details': f'{high_risk_count} پورت پرخطر شناسایی شد',
+                    'tool': 'High Risk Port Counter',
+                    'process': 'Multiple High-Risk Ports'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+            # Check for fast response times (indication of local device)
+            fast_responses = 0
+            for port, service in device_info.get('services', {}).items():
+                if service.get('response_time', 1000) < 10:  # Less than 10ms
+                    fast_responses += 1
+
+            if fast_responses >= 2:
+                threat_assessment['risk_factors'].append('زمان پاسخ سریع (احتمال دستگاه محلی)')
+
+            # Final threat summary
+            threat_log.update({
+                'type': 'success',
+                'status': '📋 ارزیابی تهدید کامل شد',
+                'details': f'سطح تهدید: {threat_assessment["threat_level"]} | امتیاز: {threat_assessment["suspicion_score"]:.2f} | عوامل ریسک: {len(threat_assessment["risk_factors"])}',
+                'tool': 'Threat Assessment Summary',
+                'process': 'Final Threat Report'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+
+            return threat_assessment
+
+        except Exception as e:
+            threat_log.update({
+                'type': 'error',
+                'status': '❌ خطا در ارزیابی تهدید',
+                'details': f'خطای سیستمی: {str(e)}',
+                'tool': 'Error Handler',
+                'process': 'Assessment Error'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+            return threat_assessment
 
     def analyze_detection_results(self, detected_devices):
         """Analyze overall detection results"""
