@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import RealInteractiveMap from "@/components/RealInteractiveMap";
+import IPRangeConfiguration from "@/components/IPRangeConfiguration";
 import "../styles/windows11.css";
 
 // Import icons (using simple SVG icons for Windows 11 style)
@@ -549,7 +550,7 @@ export default function NewDashboard() {
   const navItems = [
     { id: 'overview', label: 'نمای کلی', icon: <ActivityIcon /> },
     { id: 'scan', label: 'اسکن شبکه', icon: <SearchIcon /> },
-    { id: 'detection', label: 'تشخیص پیشرفته', icon: <ShieldIcon /> },
+    { id: 'detection', label: 'تشخیص پیشرفت��', icon: <ShieldIcon /> },
     { id: 'map', label: 'نقشه', icon: <MapIcon /> },
     { id: 'alerts', label: 'هشدارها', icon: <AlertIcon /> },
     { id: 'settings', label: 'تنظیمات', icon: <SettingsIcon /> }
