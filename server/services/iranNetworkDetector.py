@@ -530,44 +530,48 @@ class IranNetworkDetector:
 
     def assess_mining_threat(self, device_info):
         """Assess overall mining threat"""
-        
+
         threat_assessment = {
             'is_miner': False,
-            'confidence': 0,
+            'suspicion_score': 0,
             'threat_level': 'low',
             'risk_factors': [],
             'recommendations': []
         }
-        
-        mining_confidence = device_info['mining_indicators']['confidence_score']
-        
-        if mining_confidence >= 70:
-            threat_assessment['is_miner'] = True
-            threat_assessment['confidence'] = mining_confidence
-            threat_assessment['threat_level'] = device_info['mining_indicators']['threat_level']
-            
-            # Add risk factors
-            if device_info['mining_indicators']['mining_ports_found']:
-                threat_assessment['risk_factors'].append('Active mining ports detected')
-            
-            if device_info['mining_indicators']['mining_software_detected']:
-                threat_assessment['risk_factors'].append('Mining software identified')
-                
-            # Add recommendations
-            threat_assessment['recommendations'] = [
-                'Block mining-related network traffic',
-                'Investigate device owner',
-                'Monitor power consumption',
-                'Check for unauthorized hardware'
-            ]
-        
-        return threat_assessment
 
-    def analyze_detection_results(self, detected_devices):
-        """Analyze overall detection results"""
-        
-        analysis = {
-            'total_devices': len(detected_devices),
+        try:
+            mining_indicators = device_info.get('mining_indicators', {})
+            mining_confidence = mining_indicators.get('confidence_score', 0)
+
+            threat_assessment['suspicion_score'] = mining_confidence / 100.0
+
+            if mining_confidence >= 70:
+                threat_assessment['is_miner'] = True
+                threat_assessment['threat_level'] = 'critical'
+
+                # Add risk factors
+                if mining_indicators.get('mining_ports_found'):
+                    threat_assessment['risk_factors'].append('Active mining ports detected')
+
+                if mining_indicators.get('mining_software_detected'):
+                    threat_assessment['risk_factors'].append('Mining software identified')
+
+                # Add recommendations
+                threat_assessment['recommendations'] = [
+                    'Block mining-related network traffic',
+                    'Investigate device owner',
+                    'Monitor power consumption',
+                    'Check for unauthorized hardware'
+                ]
+            elif mining_confidence >= 40:
+                threat_assessment['threat_level'] = 'medium'
+                threat_assessment['recommendations'] = ['Monitor this device closely']
+
+            return threat_assessment
+
+        except Exception as e:
+            print(f"Error assessing threat: {e}")
+            return threat_assessment
             'miners_found': 0,
             'suspicious_devices': 0,
             'threat_breakdown': {'critical': 0, 'high': 0, 'medium': 0, 'low': 0},
