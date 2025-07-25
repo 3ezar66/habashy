@@ -40,28 +40,22 @@ class MinerDetector:
             network = ipaddress.ip_network(ip_range, strict=False)
             active_devices = []
             
-            print(f"Progress: شروع اسکن بازه {ip_range}")
-            
             with ThreadPoolExecutor(max_workers=50) as executor:
-                futures = []
-                
-                for ip in network.hosts():
-                    future = executor.submit(self.scan_device, str(ip), ports, timeout)
-                    futures.append(future)
-                
-                completed = 0
-                total = len(futures)
-                
-                for future in as_completed(futures):
-                    try:
-                        result = future.result()
-                        if result:
-                            active_devices.append(result)
-                        completed += 1
-                        
-                        if completed % 10 == 0:
-                            progress = (completed / total) * 100
-                            print(f"Progress: {completed}/{total} اسکن شده ({progress:.1f}%)")
+            futures = []
+
+            for ip in network.hosts():
+                future = executor.submit(self.scan_device, str(ip), ports, timeout)
+                futures.append(future)
+
+            completed = 0
+            total = len(futures)
+
+            for future in as_completed(futures):
+                try:
+                    result = future.result()
+                    if result:
+                        active_devices.append(result)
+                    completed += 1
                             
                     except Exception as e:
                         print(f"خطا در اسکن: {e}")
