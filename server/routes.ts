@@ -213,7 +213,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       // Run comprehensive Iran network detection script
-      const pythonScript = path.join(process.cwd(), 'server', 'services', 'iranNetworkDetector.py');
+      const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
       const pythonProcess = spawn('python3', [pythonScript], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
