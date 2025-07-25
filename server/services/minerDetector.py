@@ -35,7 +35,7 @@ class MinerDetector:
         }
 
     def scan_ip_range(self, ip_range, ports, timeout=3):
-        """اسکن ��ازه IP برای پیدا کردن دستگاه‌های فعال"""
+        """اسکن بازه IP برای پیدا کردن دستگاه‌های فعال"""
         try:
             network = ipaddress.ip_network(ip_range, strict=False)
             active_devices = []
@@ -44,18 +44,18 @@ class MinerDetector:
                 futures = []
 
                 for ip in network.hosts():
-                future = executor.submit(self.scan_device, str(ip), ports, timeout)
-                futures.append(future)
+                    future = executor.submit(self.scan_device, str(ip), ports, timeout)
+                    futures.append(future)
 
-            completed = 0
-            total = len(futures)
+                completed = 0
+                total = len(futures)
 
-            for future in as_completed(futures):
-                try:
-                    result = future.result()
-                    if result:
-                        active_devices.append(result)
-                    completed += 1
+                for future in as_completed(futures):
+                    try:
+                        result = future.result()
+                        if result:
+                            active_devices.append(result)
+                        completed += 1
                             
                     except Exception as e:
                         print(f"خطا در اسکن: {e}")
