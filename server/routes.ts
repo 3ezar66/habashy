@@ -186,8 +186,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: session
       });
 
-      // Run Python miner detection script
-      const pythonScript = path.join(process.cwd(), 'server', 'services', 'minerDetector.py');
+      // Run comprehensive Iran network detection script
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'iranNetworkDetector.py');
       const pythonProcess = spawn('python3', [pythonScript], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
