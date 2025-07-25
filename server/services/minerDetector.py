@@ -147,7 +147,7 @@ class MinerDetector:
         return open_ports
 
     def analyze_service(self, ip, port, timeout):
-        """تحلیل سرویس در حال اجر�� روی پورت"""
+        """تحلیل سرویس در حال اجرا روی پورت"""
         try:
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
             sock.settimeout(timeout)
@@ -341,7 +341,7 @@ def main():
         # آمار
         total_devices = len(detected_devices)
         miners_found = len([d for d in detected_devices if d['detection_results']['is_miner']])
-        
+
         result = {
             'status': 'completed',
             'total_devices': total_devices,
@@ -350,8 +350,9 @@ def main():
             'scan_config': config,
             'timestamp': time.time()
         }
-        
-        print(json.dumps(result, ensure_ascii=False, indent=2))
+
+        # Only output the final JSON result
+        print(json.dumps(result, ensure_ascii=False))
         
     except Exception as e:
         error_result = {
