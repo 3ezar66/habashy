@@ -654,7 +654,10 @@ export class DatabaseStorage implements IStorage {
       const values = [];
 
       if (updates.status !== undefined) { setParts.push('status = ?'); values.push(updates.status); }
-      if (updates.endTime !== undefined) { setParts.push('end_time = ?'); values.push(updates.endTime); }
+      if (updates.endTime !== undefined) {
+        setParts.push('end_time = ?');
+        values.push(updates.endTime instanceof Date ? updates.endTime.toISOString() : updates.endTime);
+      }
       if (updates.devicesFound !== undefined) { setParts.push('devices_found = ?'); values.push(updates.devicesFound); }
       if (updates.minersDetected !== undefined) { setParts.push('miners_detected = ?'); values.push(updates.minersDetected); }
       if (updates.errors !== undefined) { setParts.push('errors = ?'); values.push(updates.errors); }
