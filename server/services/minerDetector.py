@@ -56,11 +56,11 @@ class MinerDetector:
                         if result:
                             active_devices.append(result)
                         completed += 1
-                            
+
                     except Exception as e:
                         print(f"خطا در اسکن: {e}")
-                        
-            return active_devices
+
+                return active_devices
         except Exception as e:
             print(f"خطا در اسکن بازه IP: {e}")
             return []
