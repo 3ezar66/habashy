@@ -39,7 +39,7 @@ class IranNetworkDetector:
             'tehran': {
                 'name': 'استان تهران', 
                 'center': {'lat': 35.6892, 'lng': 51.3890},
-                'cities': ['تهران', 'کرج', 'ورامین', 'شهریار', 'پاکدشت'],
+                'cities': ['تهران', 'کرج', 'ورامین', 'شهریار', 'پاکدش��'],
                 'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
             },
             'isfahan': {
@@ -257,8 +257,19 @@ class IranNetworkDetector:
             }
 
     def scan_device_advanced(self, ip, ports, timeout, province):
-        """Advanced device scanning with mining detection"""
-        
+        """Advanced device scanning with comprehensive detailed logging"""
+
+        # Initial scan log
+        scan_log = {
+            'type': 'info',
+            'ip': ip,
+            'status': '🔍 شروع اسکن دستگاه',
+            'details': f'آغاز تحلیل جامع آدرس {ip} با {len(ports)} پورت هدف',
+            'tool': 'Advanced Network Scanner',
+            'process': 'Device Discovery Initiation'
+        }
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         device_info = {
             'ip_address': ip,
             'hostname': None,
@@ -271,41 +282,138 @@ class IranNetworkDetector:
             'is_active': False,
             'detection_timestamp': datetime.now().isoformat()
         }
-        
-        # Check if device is active
-        active_ports = self.port_scan(ip, ports, timeout)
+
+        # Step 1: Host discovery
+        scan_log.update({
+            'status': '🌐 بررسی وضعیت شبکه',
+            'details': f'ارسال درخواست ping به {ip} برای تأیید دسترسی و پاسخ‌دهی',
+            'tool': 'ICMP Echo Request',
+            'process': 'Host Reachability Test'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Check if device is active with detailed port scanning
+        active_ports = self.port_scan_detailed(ip, ports, timeout)
         if not active_ports:
+            scan_log.update({
+                'type': 'info',
+                'status': '❌ دستگاه غیرفعال',
+                'details': f'آدرس {ip} پاسخگو نیست - تمام {len(ports)} پورت بسته یا فیلتر شده',
+                'tool': 'Network Scanner',
+                'process': 'Host Offline Detection'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
             return None
-            
+
         device_info['is_active'] = True
         device_info['open_ports'] = active_ports
-        
-        # Get hostname
+
+        scan_log.update({
+            'type': 'success',
+            'status': '✅ دستگاه فعال شناسایی شد',
+            'details': f'{len(active_ports)} پورت باز یافت شد: {", ".join(map(str, active_ports))}',
+            'tool': 'TCP Port Scanner',
+            'process': 'Active Device Confirmed'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Step 2: Hostname resolution
+        scan_log.update({
+            'status': '🏷️ تحلیل نام دستگاه',
+            'details': f'درخواست DNS معکوس برای شناسایی نام میزبان',
+            'tool': 'DNS Reverse Lookup',
+            'process': 'Hostname Resolution'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         try:
             hostname = socket.gethostbyaddr(ip)[0]
             device_info['hostname'] = hostname
+            scan_log.update({
+                'type': 'success',
+                'status': '📝 نام میزبان شناسایی شد',
+                'details': f'نام دستگاه: {hostname}',
+                'tool': 'DNS Resolver',
+                'process': 'Hostname Identified'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
         except:
-            pass
-        
+            scan_log.update({
+                'status': '⚠️ نام میزبان در دسترس نیست',
+                'details': f'عدم وجود رکورد DNS معکوس برای {ip}',
+                'tool': 'DNS Resolver',
+                'process': 'Hostname Not Available'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Step 3: Service analysis
+        scan_log.update({
+            'status': '🔧 تحلیل سرویس‌های فعال',
+            'details': f'شناسایی و بررسی سرویس‌های در حال اجرا روی {len(active_ports)} پورت',
+            'tool': 'Service Detection Engine',
+            'process': 'Service Enumeration'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         # Analyze services on open ports
         for port in active_ports:
-            service_info = self.analyze_service_advanced(ip, port, timeout)
+            service_info = self.analyze_service_detailed(ip, port, timeout)
             if service_info:
                 device_info['services'][port] = service_info
-        
+
+        # Step 4: Mining detection analysis
+        scan_log.update({
+            'status': '⛏️ تحلیل نشانه‌های ماینینگ',
+            'details': f'بررسی پورت‌ها، سرویس‌ها و پروتکل‌ها برای شناسایی فعالیت ماینینگ',
+            'tool': 'Mining Detection Algorithm',
+            'process': 'Crypto Mining Analysis'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         # Mining-specific analysis
-        mining_analysis = self.detect_mining_activity(device_info)
+        mining_analysis = self.detect_mining_activity_comprehensive(device_info)
         device_info['mining_indicators'] = mining_analysis
-        
+
+        # Step 5: Geolocation analysis
+        scan_log.update({
+            'status': '🌍 تحلیل موقعیت جغرافیایی',
+            'details': f'استخراج اطلاعات ISP، شهر و استان برای {ip}',
+            'tool': 'GeoIP Location Service',
+            'process': 'Geographic Mapping'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         # Get Iran-specific geolocation
-        geo_data = self.get_iran_location_for_ip(ip, province)
+        geo_data = self.get_iran_location_detailed(ip, province)
         if geo_data:
             device_info['geolocation'] = geo_data
-        
+
+        # Step 6: Threat assessment
+        scan_log.update({
+            'status': '🛡️ ارزیابی سطح تهدید',
+            'details': f'محاسبه امتیاز مشکوک و تعیین سطح ریسک امنیتی',
+            'tool': 'Threat Assessment Engine',
+            'process': 'Risk Evaluation'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         # Threat assessment
-        threat_info = self.assess_mining_threat(device_info)
+        threat_info = self.assess_mining_threat_detailed(device_info)
         device_info['threat_assessment'] = threat_info
-        
+
+        # Final summary
+        threat_level = threat_info.get('threat_level', 'پایین')
+        suspicion_score = threat_info.get('suspicion_score', 0)
+
+        scan_log.update({
+            'type': 'success' if suspicion_score < 0.3 else 'warning' if suspicion_score < 0.7 else 'error',
+            'status': '📊 تحلیل کامل شد',
+            'details': f'امتیاز مشکوک: {suspicion_score:.2f}/1.0 | سطح تهدید: {threat_level} | پورت‌های فعال: {len(active_ports)}',
+            'tool': 'Complete Security Analysis',
+            'process': 'Final Assessment Report'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
         return device_info
 
     def port_scan(self, ip, ports, timeout):
