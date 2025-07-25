@@ -13,8 +13,13 @@ import {
 } from "@shared/schema";
 import { spawn } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const scryptAsync = promisify(scrypt);
 
