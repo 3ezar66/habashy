@@ -221,7 +221,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
       console.log(`Starting Python script: ${pythonScript}`);
 
-      const pythonProcess = spawn('python3', [pythonScript], {
+      // Try python3 first, then python
+      let pythonCmd = 'python3';
+      const pythonProcess = spawn(pythonCmd, [pythonScript], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
