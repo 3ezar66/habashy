@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useAuth } from "@/components/AuthProvider";
+import RealInteractiveMap from "@/components/RealInteractiveMap";
 import "../styles/windows11.css";
 
 // Import icons (using simple SVG icons for Windows 11 style)
@@ -63,7 +64,7 @@ function AdvancedDetectionTab() {
     { id: 'vibration_analysis', name: 'تحلیل ارتعاشات', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
     { id: 'thermal_imaging', name: 'تصویربرداری حرارتی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
     { id: 'electromagnetic_scan', name: 'اسکن الکترومغناطیسی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
-    { id: 'acoustic_fingerprinting', name: 'شناسایی صوتی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
+    { id: 'acoustic_fingerprinting', name: 'شناسایی ص��تی', status: 'inactive', progress: 0, confidence: 0, detections: 0 },
     { id: 'ai_classification', name: 'طبقه‌بندی هوش مصنوعی', status: 'inactive', progress: 0, confidence: 0, detections: 0 }
   ]);
 
@@ -357,7 +358,7 @@ function AlertsTab() {
 
       <div className="win11-card">
         <div className="win11-card-header">
-          <h3 className="win11-card-title">هشدارهای اخ��ر سیستم</h3>
+          <h3 className="win11-card-title">هشدارهای اخیر سیستم</h3>
           <p className="win11-card-subtitle">آخرین اعلان‌ها و هشدارهای تشخیص</p>
         </div>
         <div className="win11-card-content">
