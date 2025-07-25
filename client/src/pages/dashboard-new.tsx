@@ -218,7 +218,7 @@ function AdvancedDetectionTab() {
                   fontWeight: '500'
                 }}>
                   {module.status === 'scanning' ? 'در حال اسکن' :
-                   module.status === 'completed' ? 'تکمیل شده' :
+                   module.status === 'completed' ? 'تکمیل ش��ه' :
                    module.status === 'error' ? 'خطا' : 'غیرفعال'}
                 </div>
               </div>
@@ -490,10 +490,19 @@ export default function NewDashboard() {
   };
 
   const startScan = async () => {
+    const button = document.activeElement as HTMLButtonElement;
+    if (button) {
+      button.disabled = true;
+      button.textContent = 'در حال شروع اسکن...';
+    }
+
     try {
       const response = await fetch('/api/scan/comprehensive', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json'
+        },
         body: JSON.stringify({
           ipRange: '192.168.1.0/24',
           ports: [22, 80, 443, 4028, 8080, 9999],
@@ -502,14 +511,21 @@ export default function NewDashboard() {
       });
 
       if (response.ok) {
-        alert('اسکن با موفقیت آغاز شد');
+        const result = await response.json();
+        alert(`اسکن با موفقیت آغاز شد. شناسه جلسه: ${result.sessionId || 'نامشخص'}`);
         loadData();
       } else {
-        const error = await response.json();
-        alert(`خطا در شروع اسکن: ${error.error}`);
+        const error = await response.json().catch(() => ({ error: 'خطای ناشناخته' }));
+        alert(`خطا در شروع اسکن: ${error.error || 'مشکل در سرور'}`);
       }
     } catch (error) {
-      alert('خطا در ارتباط با سرور');
+      console.error('Scan error:', error);
+      alert(`خطا در ارتباط با سرور: ${error instanceof Error ? error.message : 'نامشخص'}`);
+    } finally {
+      if (button) {
+        button.disabled = false;
+        button.textContent = 'شروع اسکن جامع';
+      }
     }
   };
 
