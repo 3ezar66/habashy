@@ -279,7 +279,7 @@ function MapTab() {
       <div className="win11-card">
         <div className="win11-card-header">
           <h3 className="win11-card-title">موقعیت دستگاه‌های تشخیص داده شده</h3>
-          <p className="win11-card-subtitle">نمایش جغرافیایی ماینرهای شناسایی شده در استان ایلام</p>
+          <p className="win11-card-subtitle">نمایش جغرافیایی ماینرهای شناسا��ی شده در استان ایلام</p>
         </div>
         <div className="win11-card-content">
           <div style={{
@@ -711,7 +711,7 @@ export default function NewDashboard() {
                 <div className="win11-card-content">
                   {isLoading ? (
                     <div style={{ textAlign: 'center', padding: '20px', color: 'var(--win11-text-secondary)' }}>
-                      در حال بارگذاری...
+                      در حال ب��رگذاری...
                     </div>
                   ) : activities.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '20px', color: 'var(--win11-text-secondary)' }}>
@@ -750,43 +750,17 @@ export default function NewDashboard() {
                 اسکن شبکه
               </h1>
               
-              <div className="win11-card">
-                <div className="win11-card-header">
-                  <h3 className="win11-card-title">اسکن جامع شبکه</h3>
-                  <p className="win11-card-subtitle">جستجو و تشخیص دستگاه‌های ماینر در شبکه محلی</p>
-                </div>
-                <div className="win11-card-content">
-                  <div style={{ display: 'grid', gap: '16px', marginBottom: '20px' }}>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--win11-text-primary)' }}>
-                        بازه IP شبکه:
-                      </label>
-                      <input 
-                        type="text" 
-                        className="win11-input" 
-                        defaultValue="192.168.1.0/24"
-                        placeholder="مثال: 192.168.1.0/24"
-                      />
-                    </div>
-                    <div>
-                      <label style={{ display: 'block', marginBottom: '8px', color: 'var(--win11-text-primary)' }}>
-                        پورت‌های هدف:
-                      </label>
-                      <input 
-                        type="text" 
-                        className="win11-input" 
-                        defaultValue="22,80,443,4028,8080,9999"
-                        placeholder="پورت‌ها را با کاما جدا کنید"
-                      />
-                    </div>
-                  </div>
-                  
-                  <button onClick={startScan} className="win11-button win11-button-primary">
-                    <SearchIcon />
-                    شروع اسکن
-                  </button>
-                </div>
-              </div>
+              <IPRangeConfiguration
+                onRangeChange={(ranges) => {
+                  // Handle range change
+                  console.log('IP ranges updated:', ranges);
+                }}
+                onScanStart={(config) => {
+                  // Start scan with configuration
+                  console.log('Starting scan with config:', config);
+                  startScan();
+                }}
+              />
             </div>
           )}
 
