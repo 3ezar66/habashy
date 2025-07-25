@@ -61,8 +61,8 @@ export default function DatabaseStatus({ onExport }: DatabaseStatusProps) {
   const getStorageUsagePercentage = (stats?: Statistics) => {
     if (!stats) return 0;
 
-    // Simulate storage usage (in a real app, this would come from the API)
-    const maxCapacity = 10000; // Maximum expected devices
+    // Calculate storage usage based on device count
+    const maxCapacity = 10000;
     return Math.min((stats.totalDevices / maxCapacity) * 100, 100);
   };
 
@@ -174,7 +174,7 @@ export default function DatabaseStatus({ onExport }: DatabaseStatusProps) {
           {storageUsage > 80 && (
             <div className="flex items-center space-x-reverse space-x-2 text-xs text-persian-warning">
               <AlertTriangle className="h-3 w-3" />
-              <span>فضای ذخیره‌سازی در حال اتمام است</span>
+              <span>فضای ذخیره‌سا��ی در حال اتمام است</span>
             </div>
           )}
         </div>

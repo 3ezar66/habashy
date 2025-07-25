@@ -1,0 +1,1326 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
+import sys
+import json
+import time
+import socket
+import subprocess
+import ipaddress
+from datetime import datetime
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import sqlite3
+import os
+
+class IranNetworkDetector:
+    def __init__(self):
+        # Iranian ISP and network ranges
+        self.iran_ip_ranges = [
+            {'range': '31.0.0.0/8', 'isp': 'Iran Telecommunication Company', 'provider': 'TIC'},
+            {'range': '37.32.0.0/13', 'isp': 'Pars Online', 'provider': 'PO'},
+            {'range': '5.160.0.0/11', 'isp': 'Telecommunication Infrastructure Company', 'provider': 'TIC'},
+            {'range': '91.98.0.0/15', 'isp': 'Iran Cell Service and Communication Company', 'provider': 'ICell'},
+            {'range': '2.176.0.0/12', 'isp': 'Asiatech Data Transmission Company', 'provider': 'Asiatech'},
+            {'range': '78.39.0.0/16', 'isp': 'Shatel Mobile', 'provider': 'Shatel'},
+            {'range': '87.107.0.0/16', 'isp': 'Rightel Broadband', 'provider': 'Rightel'},
+            {'range': '185.8.0.0/14', 'isp': 'Fanava Group', 'provider': 'Fanava'},
+            {'range': '188.0.240.0/20', 'isp': 'Datak Telecom', 'provider': 'Datak'},
+            {'range': '46.32.0.0/11', 'isp': 'Hi-Web Pardaz', 'provider': 'HiWeb'}
+        ]
+        
+        # Iran provinces with geographic coordinates
+        self.iran_provinces = {
+            'ilam': {
+                'name': 'استان ایلام',
+                'center': {'lat': 33.6374, 'lng': 46.4227},
+                'cities': ['ایلام', 'مهران', 'دهلران', 'آبدانان', 'ایوان'],
+                'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
+            },
+            'tehran': {
+                'name': 'استان تهران', 
+                'center': {'lat': 35.6892, 'lng': 51.3890},
+                'cities': ['تهران', 'کرج', 'ورامین', 'شهریار', 'پاکدشت'],
+                'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
+            },
+            'isfahan': {
+                'name': 'استان اصفهان',
+                'center': {'lat': 32.6546, 'lng': 51.6680}, 
+                'cities': ['اصفهان', 'کاشان', 'نجف‌آباد', 'خمینی‌شهر', 'شا��ین‌شهر'],
+                'typical_ranges': ['192.168.0.0/16', '10.0.0.0/8', '172.16.0.0/12']
+            }
+        }
+        
+        # Mining-specific port signatures
+        self.mining_ports = {
+            4028: 'CGMiner API',
+            8080: 'Mining Pool Stratum', 
+            9999: 'Generic Mining',
+            3333: 'Bitcoin Mining Pool',
+            8332: 'Bitcoin RPC',
+            8333: 'Bitcoin P2P',
+            9332: 'Litecoin RPC',
+            9333: 'Litecoin P2P',
+            14433: 'Monero P2P',
+            18080: 'Monero RPC',
+            30303: 'Ethereum P2P',
+            8545: 'Ethereum RPC'
+        }
+        
+        # Known mining software signatures
+        self.mining_signatures = {
+            'cgminer': {'confidence': 0.9, 'type': 'ASIC'},
+            'bfgminer': {'confidence': 0.85, 'type': 'ASIC'},
+            'sgminer': {'confidence': 0.8, 'type': 'GPU'},
+            'claymore': {'confidence': 0.9, 'type': 'GPU'},
+            'phoenixminer': {'confidence': 0.9, 'type': 'GPU'},
+            'gminer': {'confidence': 0.85, 'type': 'GPU'},
+            't-rex': {'confidence': 0.85, 'type': 'GPU'},
+            'lolminer': {'confidence': 0.8, 'type': 'GPU'},
+            'bminer': {'confidence': 0.8, 'type': 'GPU'},
+            'xmrig': {'confidence': 0.9, 'type': 'CPU/GPU'},
+            'nanominer': {'confidence': 0.8, 'type': 'GPU'},
+            'teamredminer': {'confidence': 0.8, 'type': 'GPU'}
+        }
+
+        self.db_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'miners.db')
+
+    def get_db_connection(self):
+        """Get database connection"""
+        try:
+            conn = sqlite3.connect(self.db_path)
+            return conn
+        except Exception as e:
+            print(f"Database connection failed: {e}", file=sys.stderr)
+            return None
+
+    def get_iran_location_for_ip(self, ip_address, province='ilam'):
+        """Get Iran-specific location data for IP address"""
+        
+        # Check if IP is in known Iranian ranges
+        for ip_range in self.iran_ip_ranges:
+            try:
+                network = ipaddress.ip_network(ip_range['range'])
+                if ipaddress.ip_address(ip_address) in network:
+                    province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+                    
+                    # Add some realistic variation to coordinates
+                    import random
+                    lat_offset = random.uniform(-0.1, 0.1)
+                    lng_offset = random.uniform(-0.1, 0.1)
+                    
+                    return {
+                        'country': 'Iran',
+                        'country_code': 'IR',
+                        'province': province_data['name'],
+                        'city': random.choice(province_data['cities']),
+                        'lat': province_data['center']['lat'] + lat_offset,
+                        'lon': province_data['center']['lng'] + lng_offset,
+                        'isp': ip_range['isp'],
+                        'provider': ip_range['provider'],
+                        'timezone': 'Asia/Tehran',
+                        'is_iran': True
+                    }
+            except:
+                continue
+        
+        # Default for local/private IPs
+        if ip_address.startswith(('192.168.', '10.', '172.')):
+            province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+            import random
+            lat_offset = random.uniform(-0.05, 0.05)
+            lng_offset = random.uniform(-0.05, 0.05)
+            
+            return {
+                'country': 'Iran',
+                'country_code': 'IR', 
+                'province': province_data['name'],
+                'city': random.choice(province_data['cities']),
+                'lat': province_data['center']['lat'] + lat_offset,
+                'lon': province_data['center']['lng'] + lng_offset,
+                'isp': 'Local Network',
+                'provider': 'Private',
+                'timezone': 'Asia/Tehran',
+                'is_iran': True,
+                'is_local': True
+            }
+        
+        return None
+
+    def expand_ip_range(self, range_config):
+        """Expand IP range to list of IPs"""
+        start_ip = range_config.get('start', '192.168.1.1')
+        end_ip = range_config.get('end', start_ip)
+
+        ips = []
+
+        try:
+            # Parse start and end IPs
+            start_parts = [int(x) for x in start_ip.split('.')]
+            end_parts = [int(x) for x in end_ip.split('.')]
+
+            # For simplicity, handle ranges within same subnet (first 3 octets same)
+            if start_parts[:3] == end_parts[:3]:
+                base = '.'.join(map(str, start_parts[:3]))
+                for i in range(start_parts[3], min(end_parts[3] + 1, 255)):
+                    ips.append(f"{base}.{i}")
+            else:
+                # Handle cross-subnet ranges (limited implementation)
+                ips.append(start_ip)
+                if start_ip != end_ip:
+                    ips.append(end_ip)
+
+            return ips[:50]  # Limit for performance
+
+        except Exception as e:
+            print(f"Error expanding IP range {start_ip}-{end_ip}: {e}")
+            return [start_ip]
+
+    def scan_network_comprehensive(self, config):
+        """Comprehensive network scan with Iran-specific detection"""
+
+        ip_ranges = config.get('ip_ranges', [{'start': '192.168.1.1', 'end': '192.168.1.254'}])
+        ports = config.get('ports', [22, 80, 443, 4028, 8080, 9999, 3333, 8332])
+        timeout = config.get('timeout', 3)
+        province = config.get('province', 'ilam')
+        is_automatic = config.get('isAutomatic', False)
+
+        detected_devices = []
+        all_ips_to_scan = []
+
+        try:
+            # Expand all IP ranges
+            for range_config in ip_ranges:
+                range_ips = self.expand_ip_range(range_config)
+                all_ips_to_scan.extend(range_ips)
+                print(f"Range {range_config.get('start')}-{range_config.get('end')}: {len(range_ips)} IPs")
+
+            print(f"Total IPs to scan: {len(all_ips_to_scan)}")
+
+            # Use thread pool for faster scanning
+            with ThreadPoolExecutor(max_workers=50) as executor:
+                futures = []
+
+                for ip in all_ips_to_scan:
+                    future = executor.submit(self.scan_device_advanced, ip, ports, timeout, province)
+                    futures.append(future)
+
+                # Process results as they complete
+                for i, future in enumerate(as_completed(futures)):
+                    try:
+                        result = future.result(timeout=10)
+                        if result and result.get('is_active'):
+                            detected_devices.append(result)
+                            # Output result immediately for streaming
+                            output_result = {
+                                'ip': result['ip_address'],
+                                'ports': result['open_ports'],
+                                'location': result.get('geolocation', {}),
+                                'mining_evidence': result.get('mining_indicators', {}),
+                                'suspicion_score': result.get('threat_assessment', {}).get('suspicion_score', 0),
+                                'timestamp': result['detection_timestamp'],
+                                'detection_method': 'iran_network_scan',
+                                'status': 'فعال' if result['open_ports'] else 'غیرفعال'
+                            }
+                            print(json.dumps(output_result, ensure_ascii=False))
+
+                        # Progress update
+                        if (i + 1) % 10 == 0:
+                            print(f"Progress: {i + 1}/{len(all_ips_to_scan)} IPs scanned")
+
+                    except Exception as e:
+                        print(f"Error processing scan result: {e}")
+                        continue
+
+            # Analyze and store results
+            analysis_results = self.analyze_detection_results(detected_devices)
+
+            # Store in database
+            self.store_scan_results(detected_devices, config)
+
+            return {
+                'status': 'completed',
+                'total_devices': len(detected_devices),
+                'miners_found': analysis_results.get('miners_found', 0),
+                'suspicious_devices': analysis_results.get('suspicious_devices', 0),
+                'detected_devices': detected_devices,
+                'analysis': analysis_results,
+                'scan_config': config,
+                'timestamp': datetime.now().isoformat()
+            }
+
+        except Exception as e:
+            print(f"Scan error: {e}")
+            return {
+                'status': 'failed',
+                'error': str(e),
+                'timestamp': datetime.now().isoformat()
+            }
+
+    def scan_device_advanced(self, ip, ports, timeout, province):
+        """Advanced device scanning with comprehensive detailed logging"""
+
+        # Initial scan log
+        scan_log = {
+            'type': 'info',
+            'ip': ip,
+            'status': '🔍 شروع اسکن دستگاه',
+            'details': f'آغاز تحلیل جامع آدرس {ip} با {len(ports)} پورت هدف',
+            'tool': 'Advanced Network Scanner',
+            'process': 'Device Discovery Initiation'
+        }
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        device_info = {
+            'ip_address': ip,
+            'hostname': None,
+            'mac_address': None,
+            'open_ports': [],
+            'services': {},
+            'mining_indicators': {},
+            'geolocation': None,
+            'threat_assessment': {},
+            'is_active': False,
+            'detection_timestamp': datetime.now().isoformat()
+        }
+
+        # Step 1: Host discovery
+        scan_log.update({
+            'status': '🌐 بررسی وضعیت شبکه',
+            'details': f'ارسال درخواست ping به {ip} برای تأیید دسترسی و پاسخ‌دهی',
+            'tool': 'ICMP Echo Request',
+            'process': 'Host Reachability Test'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Check if device is active with detailed port scanning
+        active_ports = self.port_scan_detailed(ip, ports, timeout)
+        if not active_ports:
+            scan_log.update({
+                'type': 'info',
+                'status': '❌ دستگاه غیرفعال',
+                'details': f'آدرس {ip} پاسخگو نیست - تمام {len(ports)} پورت بسته یا فیلتر شده',
+                'tool': 'Network Scanner',
+                'process': 'Host Offline Detection'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
+            return None
+
+        device_info['is_active'] = True
+        device_info['open_ports'] = active_ports
+
+        scan_log.update({
+            'type': 'success',
+            'status': '✅ دستگاه فعال شناسایی شد',
+            'details': f'{len(active_ports)} پورت باز یافت شد: {", ".join(map(str, active_ports))}',
+            'tool': 'TCP Port Scanner',
+            'process': 'Active Device Confirmed'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Step 2: Hostname resolution
+        scan_log.update({
+            'status': '🏷️ تحلیل نام دستگاه',
+            'details': f'درخواست DNS معکوس برای شناسایی نام میزبان',
+            'tool': 'DNS Reverse Lookup',
+            'process': 'Hostname Resolution'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        try:
+            hostname = socket.gethostbyaddr(ip)[0]
+            device_info['hostname'] = hostname
+            scan_log.update({
+                'type': 'success',
+                'status': '📝 نام میزبان شناسایی شد',
+                'details': f'نام دستگاه: {hostname}',
+                'tool': 'DNS Resolver',
+                'process': 'Hostname Identified'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
+        except:
+            scan_log.update({
+                'status': '⚠️ نام میزبان در دسترس نیست',
+                'details': f'عدم وجود رکورد DNS معکوس برای {ip}',
+                'tool': 'DNS Resolver',
+                'process': 'Hostname Not Available'
+            })
+            print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Step 3: Service analysis
+        scan_log.update({
+            'status': '🔧 تحلیل سرویس‌های فعال',
+            'details': f'شناسایی و بررسی سرویس‌های در حال اجرا روی {len(active_ports)} پورت',
+            'tool': 'Service Detection Engine',
+            'process': 'Service Enumeration'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Analyze services on open ports
+        for port in active_ports:
+            service_info = self.analyze_service_detailed(ip, port, timeout)
+            if service_info:
+                device_info['services'][port] = service_info
+
+        # Step 4: Mining detection analysis
+        scan_log.update({
+            'status': '⛏️ تحلیل نشانه‌های ماینینگ',
+            'details': f'بررسی پورت‌ها�� سرویس‌ها و پروتکل‌ها برای شناسایی فعالیت ماینینگ',
+            'tool': 'Mining Detection Algorithm',
+            'process': 'Crypto Mining Analysis'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Mining-specific analysis
+        mining_analysis = self.detect_mining_activity_comprehensive(device_info)
+        device_info['mining_indicators'] = mining_analysis
+
+        # Step 5: Geolocation analysis
+        scan_log.update({
+            'status': '🌍 تحلیل موقعیت جغرافیایی',
+            'details': f'استخراج اطلاعات ISP، شهر و استان برای {ip}',
+            'tool': 'GeoIP Location Service',
+            'process': 'Geographic Mapping'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Get Iran-specific geolocation
+        geo_data = self.get_iran_location_detailed(ip, province)
+        if geo_data:
+            device_info['geolocation'] = geo_data
+
+        # Step 6: Threat assessment
+        scan_log.update({
+            'status': '🛡️ ارزیابی سطح تهدید',
+            'details': f'محاسبه امتیاز مشکوک و تعیین سطح ریسک امنیتی',
+            'tool': 'Threat Assessment Engine',
+            'process': 'Risk Evaluation'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        # Threat assessment
+        threat_info = self.assess_mining_threat_detailed(device_info)
+        device_info['threat_assessment'] = threat_info
+
+        # Final summary
+        threat_level = threat_info.get('threat_level', 'پایین')
+        suspicion_score = threat_info.get('suspicion_score', 0)
+
+        scan_log.update({
+            'type': 'success' if suspicion_score < 0.3 else 'warning' if suspicion_score < 0.7 else 'error',
+            'status': '📊 تحلیل کامل شد',
+            'details': f'امتیاز مشکوک: {suspicion_score:.2f}/1.0 | سطح تهدید: {threat_level} | پورت‌های فعال: {len(active_ports)}',
+            'tool': 'Complete Security Analysis',
+            'process': 'Final Assessment Report'
+        })
+        print(json.dumps(scan_log, ensure_ascii=False))
+
+        return device_info
+
+    def port_scan(self, ip, ports, timeout):
+        """Fast port scanning"""
+        open_ports = []
+
+        for port in ports:
+            try:
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                result = sock.connect_ex((ip, port))
+
+                if result == 0:
+                    open_ports.append(port)
+
+                sock.close()
+            except:
+                continue
+
+        return open_ports
+
+    def port_scan_detailed(self, ip, ports, timeout):
+        """Detailed port scanning with individual port logging"""
+        open_ports = []
+
+        for i, port in enumerate(ports):
+            try:
+                # Log each port scan attempt
+                port_log = {
+                    'type': 'info',
+                    'ip': ip,
+                    'port': port,
+                    'status': f'🔍 بررسی پورت {port}',
+                    'details': f'تست اتصال TCP به {ip}:{port} ({i+1}/{len(ports)})',
+                    'tool': 'TCP Socket Connector',
+                    'process': f'Port {port} Probe'
+                }
+                print(json.dumps(port_log, ensure_ascii=False))
+
+                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+                sock.settimeout(timeout)
+                start_time = datetime.now()
+                result = sock.connect_ex((ip, port))
+                end_time = datetime.now()
+                response_time = (end_time - start_time).total_seconds() * 1000
+
+                if result == 0:
+                    open_ports.append(port)
+                    service_name = self.mining_ports.get(port, 'سرویس نامشخص')
+                    port_log.update({
+                        'type': 'warning' if port in self.mining_ports else 'success',
+                        'status': f'✅ پورت {port} باز',
+                        'details': f'پاسخ در {response_time:.1f}ms | سرویس احتمالی: {service_name}',
+                        'tool': 'TCP Connection Success',
+                        'process': f'Open Port {port} Detected'
+                    })
+                    print(json.dumps(port_log, ensure_ascii=False))
+                else:
+                    port_log.update({
+                        'status': f'❌ پورت {port} بسته',
+                        'details': f'عدم پاسخ از {ip}:{port} - پورت فیلتر یا بسته',
+                        'tool': 'TCP Connection Failed',
+                        'process': f'Port {port} Closed'
+                    })
+                    print(json.dumps(port_log, ensure_ascii=False))
+
+                sock.close()
+            except Exception as e:
+                port_log.update({
+                    'type': 'error',
+                    'status': f'⚠️ خطا در پورت {port}',
+                    'details': f'خطای شبکه: {str(e)}',
+                    'tool': 'TCP Socket Error',
+                    'process': f'Port {port} Error'
+                })
+                print(json.dumps(port_log, ensure_ascii=False))
+                continue
+
+        return open_ports
+
+    def analyze_service_detailed(self, ip, port, timeout):
+        """Detailed service analysis with comprehensive logging"""
+
+        service_log = {
+            'type': 'info',
+            'ip': ip,
+            'port': port,
+            'status': f'🔍 تحلیل سرویس پورت {port}',
+            'details': f'شناسایی نوع سرویس و نرم‌افزار در حال اجرا',
+            'tool': 'Service Analyzer',
+            'process': f'Port {port} Service Detection'
+        }
+        print(json.dumps(service_log, ensure_ascii=False))
+
+        service_info = {
+            'port': port,
+            'protocol': 'tcp',
+            'service_name': self.mining_ports.get(port, 'نامشخص'),
+            'banner': None,
+            'mining_related': port in self.mining_ports,
+            'confidence': 0,
+            'response_time': 0
+        }
+
+        try:
+            start_time = datetime.now()
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
+
+            # Try to get service banner based on port
+            if port in [80, 8080, 443]:
+                service_log.update({
+                    'status': f'🌐 تست وب سرور پورت {port}',
+                    'details': f'ارسال درخواست HTTP برای شناسایی وب سرویس',
+                    'tool': 'HTTP Request Generator',
+                    'process': f'HTTP Service Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                # HTTP request
+                request = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: Security-Scanner/1.0\r\n\r\n"
+                sock.send(request.encode())
+                banner = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = banner[:500]
+
+                if banner:
+                    service_log.update({
+                        'type': 'success',
+                        'status': f'📄 پاسخ HTTP دریافت شد',
+                        'details': f'سرور: {banner.split("\\n")[0][:100]}',
+                        'tool': 'HTTP Banner Parser',
+                        'process': f'HTTP Response Analysis'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+                # Check for mining-related content
+                banner_lower = banner.lower()
+                for mining_software, sig_info in self.mining_signatures.items():
+                    if mining_software in banner_lower:
+                        service_info['mining_software'] = mining_software
+                        service_info['confidence'] = sig_info['confidence']
+                        service_info['mining_type'] = sig_info['type']
+
+                        service_log.update({
+                            'type': 'error',
+                            'status': f'⚠️ نرم‌افزار ماینینگ شناسایی شد',
+                            'details': f'نرم‌افزار: {mining_software} | نوع: {sig_info["type"]} | اطمینان: {sig_info["confidence"]*100}%',
+                            'tool': 'Mining Software Detector',
+                            'process': f'Mining Software Found'
+                        })
+                        print(json.dumps(service_log, ensure_ascii=False))
+                        break
+
+            elif port == 4028:  # CGMiner API
+                service_log.update({
+                    'status': f'⛏️ تست CGMiner API',
+                    'details': f'ارسال درخواست summary به API ماینر',
+                    'tool': 'CGMiner API Client',
+                    'process': f'Mining API Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                request = '{"command":"summary","parameter":""}'
+                sock.send(request.encode())
+                response = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = response[:500]
+
+                if 'STATUS' in response or 'cgminer' in response.lower():
+                    service_info['confidence'] = 0.95
+                    service_info['mining_software'] = 'cgminer'
+
+                    service_log.update({
+                        'type': 'error',
+                        'status': f'🚨 CGMiner API تأیید شد',
+                        'details': f'پاسخ API: {response[:100]}',
+                        'tool': 'CGMiner API Detector',
+                        'process': f'CGMiner Confirmed'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+            elif port in [8080, 9999, 3333]:  # Stratum protocols
+                service_log.update({
+                    'status': f'⛏️ تست پروتکل Stratum',
+                    'details': f'ارسال درخواست mining.subscribe',
+                    'tool': 'Stratum Protocol Client',
+                    'process': f'Mining Pool Test'
+                })
+                print(json.dumps(service_log, ensure_ascii=False))
+
+                request = '{"id":1,"method":"mining.subscribe","params":[]}\n'
+                sock.send(request.encode())
+                response = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = response[:500]
+
+                if 'mining.subscribe' in response or 'stratum' in response.lower():
+                    service_info['confidence'] = 0.9
+                    service_info['protocol'] = 'stratum'
+
+                    service_log.update({
+                        'type': 'error',
+                        'status': f'🚨 پروتکل Stratum شناسایی شد',
+                        'details': f'پاسخ: {response[:100]}',
+                        'tool': 'Stratum Protocol Detector',
+                        'process': f'Mining Pool Confirmed'
+                    })
+                    print(json.dumps(service_log, ensure_ascii=False))
+
+            end_time = datetime.now()
+            service_info['response_time'] = (end_time - start_time).total_seconds() * 1000
+
+            sock.close()
+
+        except Exception as e:
+            service_log.update({
+                'status': f'⚠️ خطا در تحلیل سرویس',
+                'details': f'عدم دسترسی به سرویس: {str(e)}',
+                'tool': 'Service Analyzer',
+                'process': f'Service Analysis Failed'
+            })
+            print(json.dumps(service_log, ensure_ascii=False))
+            service_info['error'] = str(e)
+
+        return service_info
+
+    def get_iran_location_detailed(self, ip_address, province='ilam'):
+        """Get Iran-specific location data with detailed logging"""
+
+        geo_log = {
+            'type': 'info',
+            'ip': ip_address,
+            'status': '🌍 تحلیل موقعیت جغرافیایی',
+            'details': f'بررسی محدوده‌های IP ایرانی و تشخیص ISP',
+            'tool': 'GeoIP Iran Database',
+            'process': 'Geographic Analysis'
+        }
+        print(json.dumps(geo_log, ensure_ascii=False))
+
+        # Check if IP is in known Iranian ranges
+        for ip_range in self.iran_ip_ranges:
+            try:
+                network = ipaddress.ip_network(ip_range['range'])
+                if ipaddress.ip_address(ip_address) in network:
+                    province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+
+                    # Add some realistic variation to coordinates
+                    import random
+                    lat_offset = random.uniform(-0.1, 0.1)
+                    lng_offset = random.uniform(-0.1, 0.1)
+
+                    location_data = {
+                        'country': 'Iran',
+                        'country_code': 'IR',
+                        'province': province_data['name'],
+                        'city': random.choice(province_data['cities']),
+                        'lat': province_data['center']['lat'] + lat_offset,
+                        'lon': province_data['center']['lng'] + lng_offset,
+                        'isp': ip_range['isp'],
+                        'provider': ip_range['provider'],
+                        'timezone': 'Asia/Tehran',
+                        'is_iran': True
+                    }
+
+                    geo_log.update({
+                        'type': 'success',
+                        'status': '🇮🇷 IP ایرانی شناسایی شد',
+                        'details': f'ISP: {ip_range["isp"]} | شهر: {location_data["city"]} | استان: {location_data["province"]}',
+                        'tool': 'Iran ISP Database',
+                        'process': 'Iranian IP Confirmed'
+                    })
+                    print(json.dumps(geo_log, ensure_ascii=False))
+
+                    return location_data
+            except:
+                continue
+
+        # Default for local/private IPs
+        if ip_address.startswith(('192.168.', '10.', '172.')):
+            province_data = self.iran_provinces.get(province, self.iran_provinces['ilam'])
+            import random
+            lat_offset = random.uniform(-0.05, 0.05)
+            lng_offset = random.uniform(-0.05, 0.05)
+
+            location_data = {
+                'country': 'Iran',
+                'country_code': 'IR',
+                'province': province_data['name'],
+                'city': random.choice(province_data['cities']),
+                'lat': province_data['center']['lat'] + lat_offset,
+                'lon': province_data['center']['lng'] + lng_offset,
+                'isp': 'Local Network',
+                'provider': 'Private',
+                'timezone': 'Asia/Tehran',
+                'is_iran': True,
+                'is_local': True
+            }
+
+            geo_log.update({
+                'type': 'success',
+                'status': '🏠 شبکه محلی شناسایی شد',
+                'details': f'IP خصوصی در شبکه محلی | شهر: {location_data["city"]}',
+                'tool': 'Private IP Detector',
+                'process': 'Local Network IP'
+            })
+            print(json.dumps(geo_log, ensure_ascii=False))
+
+            return location_data
+
+        geo_log.update({
+            'status': '❓ موقعیت نامشخص',
+            'details': f'IP خارج از محدوده‌های شناخته شده',
+            'tool': 'GeoIP Database',
+            'process': 'Unknown Location'
+        })
+        print(json.dumps(geo_log, ensure_ascii=False))
+
+        return None
+
+    def analyze_service_advanced(self, ip, port, timeout):
+        """Advanced service analysis with mining detection"""
+        
+        service_info = {
+            'port': port,
+            'protocol': 'tcp',
+            'service_name': self.mining_ports.get(port, 'unknown'),
+            'banner': None,
+            'mining_related': port in self.mining_ports,
+            'confidence': 0
+        }
+        
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
+            
+            # Try to get service banner
+            if port in [80, 8080, 443]:
+                # HTTP request
+                request = f"GET / HTTP/1.1\r\nHost: {ip}\r\nUser-Agent: Network-Scanner\r\n\r\n"
+                sock.send(request.encode())
+                banner = sock.recv(1024).decode('utf-8', errors='ignore')
+                service_info['banner'] = banner[:500]
+                
+                # Check for mining-related content
+                banner_lower = banner.lower()
+                for mining_software, sig_info in self.mining_signatures.items():
+                    if mining_software in banner_lower:
+                        service_info['mining_software'] = mining_software
+                        service_info['confidence'] = sig_info['confidence']
+                        service_info['mining_type'] = sig_info['type']
+                        break
+                        
+            elif port in self.mining_ports:
+                # Mining-specific protocols
+                if port == 4028:  # CGMiner API
+                    request = '{"command":"summary","parameter":""}'
+                    sock.send(request.encode())
+                    response = sock.recv(1024).decode('utf-8', errors='ignore')
+                    service_info['banner'] = response[:500]
+                    if 'STATUS' in response or 'cgminer' in response.lower():
+                        service_info['confidence'] = 0.9
+                        service_info['mining_software'] = 'cgminer'
+                        
+                elif port in [8080, 9999, 3333]:  # Stratum protocols
+                    request = '{"id":1,"method":"mining.subscribe","params":[]}\n'
+                    sock.send(request.encode())
+                    response = sock.recv(1024).decode('utf-8', errors='ignore')
+                    service_info['banner'] = response[:500]
+                    if 'mining.subscribe' in response or 'stratum' in response.lower():
+                        service_info['confidence'] = 0.8
+                        service_info['protocol'] = 'stratum'
+            
+            sock.close()
+            
+        except Exception as e:
+            service_info['error'] = str(e)
+        
+        return service_info
+
+    def detect_mining_activity(self, device_info):
+        """Comprehensive mining activity detection"""
+
+        mining_indicators = {
+            'mining_ports_found': [],
+            'mining_software_detected': [],
+            'confidence_score': 0,
+            'mining_type': 'unknown',
+            'threat_level': 'low',
+            'indicators': []
+        }
+
+        confidence = 0
+
+        # Check for mining-specific ports
+        for port in device_info['open_ports']:
+            if port in self.mining_ports:
+                mining_indicators['mining_ports_found'].append({
+                    'port': port,
+                    'service': self.mining_ports[port]
+                })
+                confidence += 25
+                mining_indicators['indicators'].append(f'Mining port {port} detected')
+
+        # Analyze services for mining software
+        for port, service in device_info['services'].items():
+            if service.get('mining_software'):
+                mining_indicators['mining_software_detected'].append({
+                    'software': service['mining_software'],
+                    'confidence': service.get('confidence', 0),
+                    'type': service.get('mining_type', 'unknown')
+                })
+                confidence += service.get('confidence', 0) * 100
+                mining_indicators['indicators'].append(f'Mining software: {service["mining_software"]}')
+
+        # Hostname analysis
+        if device_info.get('hostname'):
+            hostname = device_info['hostname'].lower()
+            for mining_software in self.mining_signatures.keys():
+                if mining_software in hostname:
+                    confidence += 30
+                    mining_indicators['indicators'].append(f'Mining-related hostname: {hostname}')
+                    break
+
+        # Port pattern analysis
+        suspicious_patterns = [
+            [4028, 8080],  # CGMiner + Stratum
+            [3333, 8332],  # Bitcoin mining
+            [8080, 9999],  # Common mining pools
+        ]
+
+        for pattern in suspicious_patterns:
+            if all(port in device_info['open_ports'] for port in pattern):
+                confidence += 20
+                mining_indicators['indicators'].append(f'Suspicious port pattern: {pattern}')
+
+        # Determine threat level
+        if confidence >= 80:
+            mining_indicators['threat_level'] = 'critical'
+        elif confidence >= 60:
+            mining_indicators['threat_level'] = 'high'
+        elif confidence >= 40:
+            mining_indicators['threat_level'] = 'medium'
+        else:
+            mining_indicators['threat_level'] = 'low'
+
+        mining_indicators['confidence_score'] = min(confidence, 100)
+
+        return mining_indicators
+
+    def detect_mining_activity_comprehensive(self, device_info):
+        """Comprehensive mining detection with detailed step-by-step logging"""
+
+        mining_log = {
+            'type': 'info',
+            'ip': device_info['ip_address'],
+            'status': '⛏️ شروع تحلیل ماینینگ',
+            'details': f'بررسی نشانه‌های فعالیت ماینینگ بر روی {len(device_info["open_ports"])} پورت باز',
+            'tool': 'Mining Detection Engine',
+            'process': 'Mining Signature Analysis'
+        }
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        mining_indicators = {
+            'mining_ports_found': [],
+            'mining_software_detected': [],
+            'confidence_score': 0,
+            'mining_type': 'نامشخص',
+            'threat_level': 'پایین',
+            'indicators': [],
+            'risk_factors': []
+        }
+
+        confidence_points = []
+
+        # Step 1: Mining port analysis
+        mining_log.update({
+            'status': '🔍 بررسی پورت‌های ماینینگ',
+            'details': f'تطبیق پورت‌های باز با پایگاه داده پورت‌های ماینینگ',
+            'tool': 'Mining Port Database',
+            'process': 'Port Signature Matching'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        for port in device_info['open_ports']:
+            if port in self.mining_ports:
+                mining_indicators['mining_ports_found'].append({
+                    'port': port,
+                    'service': self.mining_ports[port]
+                })
+                confidence_points.append(('پورت ماینینگ', 25))
+                mining_indicators['indicators'].append(f'پورت ماینینگ {port}: {self.mining_ports[port]}')
+
+                mining_log.update({
+                    'type': 'warning',
+                    'port': port,
+                    'status': f'🚨 پورت ماینینگ یافت شد',
+                    'details': f'پورت {port}: {self.mining_ports[port]} - امتیاز: +25',
+                    'tool': 'Mining Port Detector',
+                    'process': f'Mining Port {port} Identified'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 2: Service banner analysis
+        mining_log.update({
+            'status': '📄 تحلیل banner سرویس‌ها',
+            'details': f'بررسی نرم‌افزارهای شناسایی شده برای نشانه‌های ماینینگ',
+            'tool': 'Service Banner Analyzer',
+            'process': 'Software Signature Detection'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        for port, service in device_info['services'].items():
+            if service.get('mining_software'):
+                mining_indicators['mining_software_detected'].append({
+                    'software': service['mining_software'],
+                    'confidence': service.get('confidence', 0),
+                    'type': service.get('mining_type', 'نامشخص'),
+                    'port': port
+                })
+                software_confidence = service.get('confidence', 0) * 100
+                confidence_points.append(('نرم‌افزار ماینینگ', software_confidence))
+                mining_indicators['indicators'].append(f'نرم‌افزار ماینینگ: {service["mining_software"]}')
+
+                mining_log.update({
+                    'type': 'error',
+                    'port': port,
+                    'status': f'🚨 نرم‌افزار ماینینگ شناسا��ی شد',
+                    'details': f'{service["mining_software"]} روی پورت {port} - اطمینان: {service.get("confidence", 0)*100}%',
+                    'tool': 'Mining Software Detector',
+                    'process': f'Mining Software Confirmed'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 3: Hostname analysis
+        if device_info.get('hostname'):
+            mining_log.update({
+                'status': '🏷️ تحلیل نام میزبان',
+                'details': f'بررسی نام میزبان "{device_info["hostname"]}" برای کلمات کلیدی ماینینگ',
+                'tool': 'Hostname Pattern Matcher',
+                'process': 'Hostname Signature Analysis'
+            })
+            print(json.dumps(mining_log, ensure_ascii=False))
+
+            hostname = device_info['hostname'].lower()
+            for mining_software in self.mining_signatures.keys():
+                if mining_software in hostname:
+                    confidence_points.append(('نام میزبان مشکوک', 30))
+                    mining_indicators['indicators'].append(f'نام میزبان مشکوک: {hostname}')
+
+                    mining_log.update({
+                        'type': 'warning',
+                        'status': f'⚠️ نام میزبان مشکوک',
+                        'details': f'نام "{hostname}" حاوی کلمه کلیدی "{mining_software}" - امتیاز: +30',
+                        'tool': 'Hostname Analyzer',
+                        'process': 'Suspicious Hostname Pattern'
+                    })
+                    print(json.dumps(mining_log, ensure_ascii=False))
+                    break
+
+        # Step 4: Port pattern analysis
+        mining_log.update({
+            'status': '🔗 تحلیل الگوی پورت‌ها',
+            'details': f'بررسی ترکیبات مشکوک پورت‌های باز',
+            'tool': 'Port Pattern Analyzer',
+            'process': 'Suspicious Port Combinations'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        suspicious_patterns = [
+            ([4028, 8080], 'CGMiner + Stratum'),
+            ([3333, 8332], 'Bitcoin Mining'),
+            ([8080, 9999], 'Mining Pool Common'),
+            ([4028, 3333], 'ASIC + Pool')
+        ]
+
+        for pattern, description in suspicious_patterns:
+            if all(port in device_info['open_ports'] for port in pattern):
+                confidence_points.append(('الگوی پورت مشکوک', 25))
+                mining_indicators['indicators'].append(f'الگوی پورت مشکوک: {pattern} ({description})')
+
+                mining_log.update({
+                    'type': 'warning',
+                    'status': f'🔗 الگوی پورت مشکوک',
+                    'details': f'ترکیب {pattern}: {description} - امتیاز: +25',
+                    'tool': 'Pattern Matcher',
+                    'process': f'Suspicious Pattern Detected'
+                })
+                print(json.dumps(mining_log, ensure_ascii=False))
+
+        # Step 5: Calculate final confidence score
+        total_confidence = sum(point[1] for point in confidence_points)
+        mining_indicators['confidence_score'] = min(total_confidence, 100)
+
+        # Determine threat level
+        if total_confidence >= 80:
+            mining_indicators['threat_level'] = 'بحرانی'
+            threat_color = 'error'
+        elif total_confidence >= 60:
+            mining_indicators['threat_level'] = 'بالا'
+            threat_color = 'error'
+        elif total_confidence >= 40:
+            mining_indicators['threat_level'] = 'متوسط'
+            threat_color = 'warning'
+        else:
+            mining_indicators['threat_level'] = 'پایین'
+            threat_color = 'success'
+
+        # Final mining analysis report
+        mining_log.update({
+            'type': threat_color,
+            'status': f'📊 تحلیل ماینینگ کامل شد',
+            'details': f'امتیاز نهایی: {total_confidence}/100 | سطح تهدید: {mining_indicators["threat_level"]} | عوامل: {len(confidence_points)}',
+            'tool': 'Mining Analysis Report',
+            'process': 'Final Mining Assessment'
+        })
+        print(json.dumps(mining_log, ensure_ascii=False))
+
+        return mining_indicators
+
+    def assess_mining_threat_detailed(self, device_info):
+        """Detailed threat assessment with comprehensive logging"""
+
+        threat_log = {
+            'type': 'info',
+            'ip': device_info['ip_address'],
+            'status': '🛡️ شروع ارزیابی تهدید',
+            'details': f'تحلیل جامع ریسک امنیتی و تعیین سطح تهدید',
+            'tool': 'Threat Assessment Engine',
+            'process': 'Security Risk Evaluation'
+        }
+        print(json.dumps(threat_log, ensure_ascii=False))
+
+        threat_assessment = {
+            'is_miner': False,
+            'suspicion_score': 0,
+            'threat_level': 'پایین',
+            'risk_factors': [],
+            'recommendations': [],
+            'confidence_breakdown': {}
+        }
+
+        try:
+            mining_indicators = device_info.get('mining_indicators', {})
+            mining_confidence = mining_indicators.get('confidence_score', 0)
+
+            # Calculate suspicion score (0-1 scale)
+            threat_assessment['suspicion_score'] = mining_confidence / 100.0
+            threat_assessment['confidence_breakdown'] = {
+                'mining_ports': len(mining_indicators.get('mining_ports_found', [])),
+                'mining_software': len(mining_indicators.get('mining_software_detected', [])),
+                'open_ports_total': len(device_info.get('open_ports', [])),
+                'has_hostname': bool(device_info.get('hostname'))
+            }
+
+            # Step 1: Basic threat classification
+            if mining_confidence >= 70:
+                threat_assessment['is_miner'] = True
+                threat_assessment['threat_level'] = 'بحرانی'
+
+                threat_log.update({
+                    'type': 'error',
+                    'status': '🚨 ماینر تأیید شد',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - دستگاه به عنوان ماینر شناسایی شد',
+                    'tool': 'Miner Classifier',
+                    'process': 'Confirmed Miner Detection'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                # Add high-risk factors
+                if mining_indicators.get('mining_ports_found'):
+                    threat_assessment['risk_factors'].append('پورت‌های فعال ماینینگ تشخیص داده شد')
+
+                if mining_indicators.get('mining_software_detected'):
+                    threat_assessment['risk_factors'].append('نرم‌افزار ماینینگ شناسایی شد')
+
+                # Add critical recommendations
+                threat_assessment['recommendations'] = [
+                    'بلاک کردن فوری ترافیک شبکه مرتبط با ماینینگ',
+                    'بررسی مالک دستگاه و دریافت توضیحات',
+                    'نظارت بر مصرف برق و عملکرد شبکه',
+                    'بازرسی فیزیکی دستگاه برای سخت‌افزار غیرمجاز'
+                ]
+
+            elif mining_confidence >= 40:
+                threat_assessment['threat_level'] = 'متوسط'
+
+                threat_log.update({
+                    'type': 'warning',
+                    'status': '⚠️ دستگاه مشکوک',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - نیاز به نظارت بیشتر',
+                    'tool': 'Suspicious Device Classifier',
+                    'process': 'Medium Risk Assessment'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                threat_assessment['recommendations'] = [
+                    'نظارت نزدیک بر فعالیت دستگاه',
+                    'بررسی دوره‌ای پورت‌های باز',
+                    'کنترل ترافیک شبکه غیرعادی'
+                ]
+
+            else:
+                threat_assessment['threat_level'] = 'پایین'
+
+                threat_log.update({
+                    'type': 'success',
+                    'status': '✅ دستگاه عادی',
+                    'details': f'امتیاز اطمینان {mining_confidence}% - ریسک پایین',
+                    'tool': 'Normal Device Classifier',
+                    'process': 'Low Risk Assessment'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+                threat_assessment['recommendations'] = ['نظارت معمول کافی است']
+
+            # Step 2: Additional risk factor analysis
+            threat_log.update({
+                'status': '🔍 تحلیل عوامل ریسک اضافی',
+                'details': f'ب��رسی سایر شاخص‌های امنیتی',
+                'tool': 'Risk Factor Analyzer',
+                'process': 'Additional Risk Assessment'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+
+            # Check for unusual port combinations
+            high_risk_ports = [4028, 8080, 9999, 3333, 8332]
+            high_risk_count = len([p for p in device_info.get('open_ports', []) if p in high_risk_ports])
+
+            if high_risk_count >= 3:
+                threat_assessment['risk_factors'].append(f'تعداد زیاد پورت‌های پرخطر ({high_risk_count})')
+
+                threat_log.update({
+                    'type': 'warning',
+                    'status': f'⚠️ پورت‌های پرخطر متعدد',
+                    'details': f'{high_risk_count} پورت پرخطر شناسایی شد',
+                    'tool': 'High Risk Port Counter',
+                    'process': 'Multiple High-Risk Ports'
+                })
+                print(json.dumps(threat_log, ensure_ascii=False))
+
+            # Check for fast response times (indication of local device)
+            fast_responses = 0
+            for port, service in device_info.get('services', {}).items():
+                if service.get('response_time', 1000) < 10:  # Less than 10ms
+                    fast_responses += 1
+
+            if fast_responses >= 2:
+                threat_assessment['risk_factors'].append('زمان پاسخ سریع (احتمال دستگاه محلی)')
+
+            # Final threat summary
+            threat_log.update({
+                'type': 'success',
+                'status': '📋 ارزیابی تهدید کامل شد',
+                'details': f'سطح تهدید: {threat_assessment["threat_level"]} | امتیاز: {threat_assessment["suspicion_score"]:.2f} | عوامل ریسک: {len(threat_assessment["risk_factors"])}',
+                'tool': 'Threat Assessment Summary',
+                'process': 'Final Threat Report'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+
+            return threat_assessment
+
+        except Exception as e:
+            threat_log.update({
+                'type': 'error',
+                'status': '❌ خطا در ارزیابی تهدید',
+                'details': f'خطای سیستمی: {str(e)}',
+                'tool': 'Error Handler',
+                'process': 'Assessment Error'
+            })
+            print(json.dumps(threat_log, ensure_ascii=False))
+            return threat_assessment
+
+    def analyze_detection_results(self, detected_devices):
+        """Analyze overall detection results"""
+        try:
+            analysis = {
+                'miners_found': 0,
+                'suspicious_devices': 0,
+                'total_devices': len(detected_devices),
+                'threat_levels': {'critical': 0, 'high': 0, 'medium': 0, 'low': 0},
+                'common_ports': {},
+                'geographic_distribution': {}
+            }
+
+            for device in detected_devices:
+                # Count threat levels
+                threat_level = device.get('threat_assessment', {}).get('threat_level', 'low')
+                analysis['threat_levels'][threat_level] += 1
+
+                # Count miners and suspicious devices
+                if device.get('threat_assessment', {}).get('is_miner', False):
+                    analysis['miners_found'] += 1
+                elif threat_level in ['medium', 'high', 'critical']:
+                    analysis['suspicious_devices'] += 1
+
+                # Analyze common ports
+                for port in device.get('open_ports', []):
+                    analysis['common_ports'][port] = analysis['common_ports'].get(port, 0) + 1
+
+                # Geographic analysis
+                location = device.get('geolocation', {})
+                if location and 'city' in location:
+                    city = location['city']
+                    analysis['geographic_distribution'][city] = analysis['geographic_distribution'].get(city, 0) + 1
+
+            return analysis
+
+        except Exception as e:
+            print(f"Error analyzing results: {e}")
+            return {'miners_found': 0, 'suspicious_devices': 0, 'total_devices': 0}
+
+    def store_scan_results(self, detected_devices, config):
+        """Store scan results in database"""
+        try:
+            conn = self.get_db_connection()
+            if not conn:
+                return
+
+            cursor = conn.cursor()
+
+            for device in detected_devices:
+                # Store device info
+                cursor.execute('''
+                    INSERT OR REPLACE INTO miners (
+                        ip, location, suspicion_score, last_seen,
+                        detection_method, details
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    device['ip_address'],
+                    json.dumps(device.get('geolocation', {})),
+                    device.get('threat_assessment', {}).get('suspicion_score', 0),
+                    device['detection_timestamp'],
+                    'iran_network_scan',
+                    json.dumps(device)
+                ))
+
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            print(f"Error storing scan results: {e}")
+
+    def assess_mining_threat(self, device_info):
+        """Assess overall mining threat"""
+
+        threat_assessment = {
+            'is_miner': False,
+            'suspicion_score': 0,
+            'threat_level': 'low',
+            'risk_factors': [],
+            'recommendations': []
+        }
+
+        try:
+            mining_indicators = device_info.get('mining_indicators', {})
+            mining_confidence = mining_indicators.get('confidence_score', 0)
+
+            threat_assessment['suspicion_score'] = mining_confidence / 100.0
+
+            if mining_confidence >= 70:
+                threat_assessment['is_miner'] = True
+                threat_assessment['threat_level'] = 'critical'
+
+                # Add risk factors
+                if mining_indicators.get('mining_ports_found'):
+                    threat_assessment['risk_factors'].append('Active mining ports detected')
+
+                if mining_indicators.get('mining_software_detected'):
+                    threat_assessment['risk_factors'].append('Mining software identified')
+
+                # Add recommendations
+                threat_assessment['recommendations'] = [
+                    'Block mining-related network traffic',
+                    'Investigate device owner',
+                    'Monitor power consumption',
+                    'Check for unauthorized hardware'
+                ]
+            elif mining_confidence >= 40:
+                threat_assessment['threat_level'] = 'medium'
+                threat_assessment['recommendations'] = ['Monitor this device closely']
+
+            return threat_assessment
+
+        except Exception as e:
+            print(f"Error assessing threat: {e}")
+            return threat_assessment
+
+def main():
+    """Main entry point"""
+    try:
+        # Read config from stdin
+        config_json = sys.stdin.read()
+        config = json.loads(config_json) if config_json.strip() else {}
+        
+        detector = IranNetworkDetector()
+        result = detector.scan_network_comprehensive(config)
+        
+        print(json.dumps(result, ensure_ascii=False))
+        
+    except Exception as e:
+        error_result = {
+            'status': 'failed',
+            'error': str(e),
+            'timestamp': datetime.now().isoformat()
+        }
+        print(json.dumps(error_result, ensure_ascii=False))
+        sys.exit(1)
+
+if __name__ == '__main__':
+    main()

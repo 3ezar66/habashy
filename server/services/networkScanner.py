@@ -1,349 +1,307 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""
-Network Scanner Service for Real-time Device Detection
-"""
 
-import asyncio
 import json
-import logging
+import sys
 import socket
-import subprocess
 import threading
 import time
-from concurrent.futures import ThreadPoolExecutor
-from datetime import datetime
-from typing import Dict, List, Optional, Callable
-import re
-
-import psutil
-import scapy.all as scapy
-from scapy.layers.l2 import ARP, Ether
-
-logger = logging.getLogger(__name__)
+import subprocess
+import ipaddress
+import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import os
 
 class NetworkScanner:
     def __init__(self):
         self.active_scans = {}
         self.scan_results = {}
         
-    def discover_local_networks(self) -> List[str]:
-        """Discover local network ranges"""
-        networks = []
+    def start_network_scan(self, config):
+        """شروع اسکن شبکه جدید"""
+        scan_id = str(uuid.uuid4())
         
-        try:
-            for interface, addrs in psutil.net_if_addrs().items():
-                for addr in addrs:
-                    if addr.family == socket.AF_INET and not addr.address.startswith('127.'):
-                        # Calculate network range
-                        if addr.netmask:
-                            import ipaddress
-                            network = ipaddress.IPv4Network(f"{addr.address}/{addr.netmask}", strict=False)
-                            networks.append(str(network))
-        except Exception as e:
-            logger.error(f"Error discovering networks: {e}")
-            
-        return networks
-    
-    def is_valid_ip(self, ip: str) -> bool:
-        pattern = re.compile(r'^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$')
-        return bool(pattern.match(ip))
-    
-    def is_valid_port(self, port: int) -> bool:
-        return isinstance(port, int) and 0 < port < 65536
-    
-    def is_valid_network(self, network: str) -> bool:
-        try:
-            import ipaddress
-            ipaddress.IPv4Network(network, strict=False)
-            return True
-        except Exception:
-            return False
-    
-    def fast_port_scan(self, ip: str, ports: List[int], timeout: float = 1.0) -> List[int]:
-        """Fast TCP port scanner"""
-        if not self.is_valid_ip(ip):
-            logger.error(f"Invalid IP address: {ip}")
-            return []
-        if not all(self.is_valid_port(p) for p in ports):
-            logger.error(f"Invalid port(s) in: {ports}")
-            return []
-        
-        open_ports = []
-        
-        def scan_port(port):
-            try:
-                sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-                sock.settimeout(timeout)
-                result = sock.connect_ex((ip, port))
-                sock.close()
-                if result == 0:
-                    return port
-            except Exception:
-                pass
-            return None
-        
-        with ThreadPoolExecutor(max_workers=100) as executor:
-            futures = [executor.submit(scan_port, port) for port in ports]
-            for future in futures:
-                try:
-                    result = future.result(timeout=timeout + 1)
-                    if result:
-                        open_ports.append(result)
-                except Exception:
-                    pass
-                    
-        return sorted(open_ports)
-    
-    def arp_scan(self, network: str) -> List[Dict[str, str]]:
-        """Perform ARP scan to discover active hosts"""
-        devices = []
-        
-        try:
-            # Create ARP request
-            arp_request = ARP(pdst=network)
-            broadcast = Ether(dst="ff:ff:ff:ff:ff:ff")
-            arp_request_broadcast = broadcast / arp_request
-            
-            # Send request and receive responses
-            answered_list = scapy.srp(arp_request_broadcast, timeout=3, verbose=False)[0]
-            
-            for element in answered_list:
-                device_info = {
-                    'ip': element[1].psrc,
-                    'mac': element[1].hwsrc,
-                    'vendor': self._get_vendor_from_mac(element[1].hwsrc)
-                }
-                devices.append(device_info)
-                
-        except Exception as e:
-            logger.error(f"ARP scan error: {e}")
-            
-        return devices
-    
-    def _get_vendor_from_mac(self, mac: str) -> str:
-        """Get vendor from MAC address (simplified)"""
-        # This would typically use a MAC vendor database
-        # For now, return basic identification
-        oui = mac[:8].upper().replace(':', '')
-        
-        known_vendors = {
-            '00:1B:44': 'Bitmain Technologies',
-            '00:0C:43': 'Microchip Technology',
-            '00:07:32': 'Micro-Star International',
-            '00:1E:C9': 'ASUSTEK Computer',
-            '00:24:8C': 'NVIDIA Corporation'
-        }
-        
-        return known_vendors.get(oui[:6], 'Unknown')
-    
-    def monitor_network_traffic(self, interface: str = None, duration: int = 60) -> Dict[str, Any]:
-        """Monitor network traffic for mining patterns"""
-        traffic_data = {
-            'start_time': datetime.now(),
-            'suspicious_connections': [],
-            'high_traffic_ips': [],
-            'mining_pool_connections': []
-        }
-        
-        # Known mining pool domains/IPs
-        mining_pools = [
-            'pool.nanopool.org', 'eth-us-east1.nanopool.org',
-            'us1.ethermine.org', 'eu1.ethermine.org',
-            'xmr-usa-east1.nanopool.org', 'xmr-eu1.nanopool.org',
-            'btc.antpool.com', 'stratum.antpool.com'
-        ]
-        
-        try:
-            def packet_handler(packet):
-                if packet.haslayer('IP'):
-                    src_ip = packet['IP'].src
-                    dst_ip = packet['IP'].dst
-                    
-                    # Check for connections to mining pools
-                    try:
-                        if packet.haslayer('TCP'):
-                            dst_port = packet['TCP'].dport
-                            
-                            # Check for stratum ports
-                            if dst_port in [3333, 4444, 9999, 14444]:
-                                traffic_data['suspicious_connections'].append({
-                                    'src_ip': src_ip,
-                                    'dst_ip': dst_ip,
-                                    'dst_port': dst_port,
-                                    'timestamp': datetime.now(),
-                                    'type': 'stratum_port'
-                                })
-                                
-                    except Exception:
-                        pass
-            
-            # Capture packets for specified duration
-            if interface:
-                scapy.sniff(iface=interface, prn=packet_handler, timeout=duration)
-            else:
-                scapy.sniff(prn=packet_handler, timeout=duration)
-                
-        except Exception as e:
-            logger.error(f"Traffic monitoring error: {e}")
-            
-        traffic_data['end_time'] = datetime.now()
-        return traffic_data
-    
-    def scan_network_async(self, network: str, ports: List[int], 
-                          progress_callback: Optional[Callable] = None) -> str:
-        """Start asynchronous network scan"""
-        scan_id = f"scan_{int(time.time())}"
-        
-        def run_scan():
-            try:
-                # Discover hosts
-                if progress_callback:
-                    progress_callback(10, "Discovering hosts...")
-                    
-                hosts = self.arp_scan(network)
-                
-                if progress_callback:
-                    progress_callback(30, f"Found {len(hosts)} hosts, scanning ports...")
-                
-                # Scan ports on each host
-                detailed_results = []
-                for i, host in enumerate(hosts):
-                    ip = host['ip']
-                    open_ports = self.fast_port_scan(ip, ports)
-                    
-                    host_info = {
-                        **host,
-                        'open_ports': open_ports,
-                        'scan_time': datetime.now().isoformat()
-                    }
-                    
-                    # Get additional info
-                    try:
-                        hostname = socket.gethostbyaddr(ip)[0]
-                        host_info['hostname'] = hostname
-                    except Exception:
-                        host_info['hostname'] = None
-                        
-                    detailed_results.append(host_info)
-                    
-                    if progress_callback:
-                        progress = 30 + int((i / len(hosts)) * 60)
-                        progress_callback(progress, f"Scanning {ip}...")
-                
-                self.scan_results[scan_id] = {
-                    'status': 'completed',
-                    'network': network,
-                    'ports': ports,
-                    'results': detailed_results,
-                    'start_time': self.active_scans[scan_id]['start_time'],
-                    'end_time': datetime.now().isoformat()
-                }
-                
-                if progress_callback:
-                    progress_callback(100, "Scan completed")
-                    
-            except Exception as e:
-                logger.error(f"Scan error: {e}")
-                self.scan_results[scan_id] = {
-                    'status': 'failed',
-                    'error': str(e),
-                    'start_time': self.active_scans[scan_id]['start_time'],
-                    'end_time': datetime.now().isoformat()
-                }
-            finally:
-                if scan_id in self.active_scans:
-                    del self.active_scans[scan_id]
-        
-        # Start scan in background thread
         self.active_scans[scan_id] = {
             'status': 'running',
-            'network': network,
-            'ports': ports,
-            'start_time': datetime.now().isoformat()
+            'config': config,
+            'start_time': time.time(),
+            'progress': 0
         }
         
-        thread = threading.Thread(target=run_scan)
+        # شروع اسکن در thread جداگانه
+        thread = threading.Thread(target=self._run_network_scan, args=(scan_id, config))
         thread.daemon = True
         thread.start()
         
         return scan_id
     
-    def get_scan_status(self, scan_id: str) -> Dict[str, Any]:
-        """Get status of running or completed scan"""
-        if scan_id in self.active_scans:
-            return self.active_scans[scan_id]
-        elif scan_id in self.scan_results:
-            return self.scan_results[scan_id]
-        else:
-            return {'status': 'not_found'}
+    def _run_network_scan(self, scan_id, config):
+        """اجرای اسکن شبکه"""
+        try:
+            network = config.get('network', '192.168.1.0/24')
+            
+            print(f"شروع اسکن شبکه {network}")
+            
+            # اسکن ping
+            active_hosts = self._ping_scan(network, scan_id)
+            
+            # اسکن پورت برای هاست‌های فعال
+            detailed_results = []
+            total_hosts = len(active_hosts)
+            
+            for i, host in enumerate(active_hosts):
+                host_info = self._scan_host_details(host)
+                detailed_results.append(host_info)
+                
+                # به‌روزرسانی پیشرفت
+                progress = int(((i + 1) / total_hosts) * 100)
+                self.active_scans[scan_id]['progress'] = progress
+            
+            # ذخیره نتایج نهایی
+            self.scan_results[scan_id] = {
+                'status': 'completed',
+                'results': detailed_results,
+                'total_hosts': len(active_hosts),
+                'scan_time': time.time() - self.active_scans[scan_id]['start_time']
+            }
+            
+            self.active_scans[scan_id]['status'] = 'completed'
+            
+        except Exception as e:
+            self.scan_results[scan_id] = {
+                'status': 'failed',
+                'error': str(e),
+                'scan_time': time.time() - self.active_scans[scan_id]['start_time']
+            }
+            self.active_scans[scan_id]['status'] = 'failed'
     
-    def get_system_info(self) -> Dict[str, Any]:
-        """Get system network information"""
-        info = {
-            'interfaces': [],
-            'connections': [],
-            'processes': []
+    def _ping_scan(self, network, scan_id):
+        """اسکن ping برای پیدا کردن هاست‌های فعال"""
+        try:
+            network_obj = ipaddress.ip_network(network, strict=False)
+            active_hosts = []
+            
+            with ThreadPoolExecutor(max_workers=100) as executor:
+                futures = []
+                
+                for ip in network_obj.hosts():
+                    future = executor.submit(self._ping_host, str(ip))
+                    futures.append((future, str(ip)))
+                
+                for future, ip in futures:
+                    try:
+                        if future.result():
+                            active_hosts.append(ip)
+                    except:
+                        continue
+            
+            return active_hosts
+            
+        except Exception as e:
+            print(f"خطا در ping scan: {e}")
+            return []
+    
+    def _ping_host(self, ip):
+        """ping یک هاست مشخص"""
+        try:
+            # استفاده از ping برای تشخیص هاست فعال
+            if os.name == 'nt':  # Windows
+                result = subprocess.run(['ping', '-n', '1', '-w', '1000', ip], 
+                                      capture_output=True, text=True)
+            else:  # Linux/Unix
+                result = subprocess.run(['ping', '-c', '1', '-W', '1', ip], 
+                                      capture_output=True, text=True)
+            
+            return result.returncode == 0
+            
+        except:
+            return False
+    
+    def _scan_host_details(self, ip):
+        """اسکن جزئیات یک هاست"""
+        host_info = {
+            'ip': ip,
+            'hostname': None,
+            'mac_address': None,
+            'open_ports': [],
+            'os_detection': None,
+            'services': {},
+            'response_time': None
         }
         
+        # دریافت hostname
         try:
-            # Network interfaces
-            for interface, addrs in psutil.net_if_addrs().items():
-                interface_info = {'name': interface, 'addresses': []}
-                for addr in addrs:
-                    interface_info['addresses'].append({
-                        'family': str(addr.family),
-                        'address': addr.address,
-                        'netmask': addr.netmask,
-                        'broadcast': addr.broadcast
-                    })
-                info['interfaces'].append(interface_info)
-            
-            # Active connections
-            for conn in psutil.net_connections():
-                if conn.raddr:
-                    info['connections'].append({
-                        'local_addr': f"{conn.laddr.ip}:{conn.laddr.port}",
-                        'remote_addr': f"{conn.raddr.ip}:{conn.raddr.port}",
-                        'status': conn.status,
-                        'pid': conn.pid
-                    })
-            
-            # Network-related processes
-            for proc in psutil.process_iter(['pid', 'name', 'connections']):
-                try:
-                    if proc.info['connections']:
-                        info['processes'].append({
-                            'pid': proc.info['pid'],
-                            'name': proc.info['name'],
-                            'connection_count': len(proc.info['connections'])
-                        })
-                except (psutil.NoSuchProcess, psutil.AccessDenied):
-                    continue
-                    
-        except Exception as e:
-            logger.error(f"System info error: {e}")
-            
-        return info
-
-# Global scanner instance
-scanner = NetworkScanner()
-
-def start_network_scan(config: Dict[str, Any]) -> str:
-    """Start network scan with given configuration"""
-    network = config.get('network', '192.168.1.0/24')
-    ports = config.get('ports', [22, 80, 443, 4028, 8080, 9999])
+            hostname = socket.gethostbyaddr(ip)[0]
+            host_info['hostname'] = hostname
+        except:
+            pass
+        
+        # اسکن پورت‌های رایج
+        common_ports = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 993, 995, 1723, 3389, 5900, 8080, 9999, 4028]
+        
+        start_time = time.time()
+        open_ports = []
+        
+        for port in common_ports:
+            if self._check_port(ip, port):
+                open_ports.append(port)
+                # تشخیص سرویس
+                service = self._identify_service(ip, port)
+                if service:
+                    host_info['services'][port] = service
+        
+        host_info['open_ports'] = open_ports
+        host_info['response_time'] = int((time.time() - start_time) * 1000)
+        
+        # تشخیص ساده OS
+        host_info['os_detection'] = self._simple_os_detection(ip, open_ports)
+        
+        return host_info
     
-    return scanner.scan_network_async(network, ports)
+    def _check_port(self, ip, port, timeout=1):
+        """بررسی باز بودن پورت"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            result = sock.connect_ex((ip, port))
+            sock.close()
+            return result == 0
+        except:
+            return False
+    
+    def _identify_service(self, ip, port):
+        """شناسایی سرویس در حال اجرا روی پورت"""
+        service_map = {
+            21: 'FTP',
+            22: 'SSH',
+            23: 'Telnet',
+            25: 'SMTP',
+            53: 'DNS',
+            80: 'HTTP',
+            110: 'POP3',
+            135: 'RPC',
+            139: 'NetBIOS',
+            143: 'IMAP',
+            443: 'HTTPS',
+            993: 'IMAPS',
+            995: 'POP3S',
+            1723: 'PPTP',
+            3389: 'RDP',
+            5900: 'VNC',
+            8080: 'HTTP-Alt',
+            9999: 'Unknown/Miner',
+            4028: 'Miner-API'
+        }
+        
+        service_name = service_map.get(port, f'Unknown-{port}')
+        
+        # تلاش برای دریافت banner
+        banner = self._get_service_banner(ip, port)
+        
+        return {
+            'name': service_name,
+            'banner': banner,
+            'version': self._extract_version(banner) if banner else None
+        }
+    
+    def _get_service_banner(self, ip, port, timeout=2):
+        """دریافت banner سرویس"""
+        try:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            sock.settimeout(timeout)
+            sock.connect((ip, port))
+            
+            # ارسال درخواست ساده
+            if port == 80 or port == 8080:
+                sock.send(b"GET / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n")
+            elif port == 443:
+                sock.send(b"GET / HTTP/1.1\r\nHost: " + ip.encode() + b"\r\n\r\n")
+            else:
+                sock.send(b"\r\n")
+            
+            banner = sock.recv(1024).decode('utf-8', errors='ignore')
+            sock.close()
+            
+            return banner[:200] if banner else None
+            
+        except:
+            return None
+    
+    def _extract_version(self, banner):
+        """استخراج نسخه از banner"""
+        if not banner:
+            return None
+            
+        banner_lower = banner.lower()
+        
+        # جستجوی الگوهای رایج نسخه
+        import re
+        version_patterns = [
+            r'server:\s*([^\r\n]+)',
+            r'version\s*[\s:=]\s*([^\s\r\n]+)',
+            r'(\d+\.\d+(?:\.\d+)?)',
+        ]
+        
+        for pattern in version_patterns:
+            match = re.search(pattern, banner_lower)
+            if match:
+                return match.group(1).strip()
+        
+        return None
+    
+    def _simple_os_detection(self, ip, open_ports):
+        """تشخیص ساده سیستم عامل"""
+        if 3389 in open_ports:  # RDP
+            return 'Windows'
+        elif 22 in open_ports and 80 in open_ports:  # SSH + HTTP
+            return 'Linux'
+        elif 139 in open_ports or 135 in open_ports:  # NetBIOS/RPC
+            return 'Windows'
+        elif 22 in open_ports:  # SSH only
+            return 'Unix/Linux'
+        else:
+            return 'Unknown'
+    
+    def get_scan_results(self, scan_id):
+        """دریافت نتایج اسکن"""
+        if scan_id in self.scan_results:
+            return self.scan_results[scan_id]
+        elif scan_id in self.active_scans:
+            return {
+                'status': self.active_scans[scan_id]['status'],
+                'progress': self.active_scans[scan_id]['progress']
+            }
+        else:
+            return {'status': 'not_found'}
 
-def get_scan_results(scan_id: str) -> Dict[str, Any]:
-    """Get results of network scan"""
-    return scanner.get_scan_status(scan_id)
+# نمونه global scanner
+_scanner = NetworkScanner()
 
-def discover_networks() -> List[str]:
-    """Discover local networks"""
-    return scanner.discover_local_networks()
+def start_network_scan(config):
+    return _scanner.start_network_scan(config)
 
-def get_network_info() -> Dict[str, Any]:
-    """Get network system information"""
-    return scanner.get_system_info()
+def get_scan_results(scan_id):
+    return _scanner.get_scan_results(scan_id)
+
+# اگر مستقیماً اجرا شود
+if __name__ == '__main__':
+    if len(sys.argv) > 1:
+        command = sys.argv[1]
+        
+        if command == 'scan':
+            network = sys.argv[2] if len(sys.argv) > 2 else '192.168.1.0/24'
+            config = {'network': network}
+            scan_id = start_network_scan(config)
+            
+            # انتظار تا تکمیل اسکن
+            while True:
+                result = get_scan_results(scan_id)
+                if result['status'] in ['completed', 'failed']:
+                    print(json.dumps(result, ensure_ascii=False, indent=2))
+                    break
+                time.sleep(1)
+                
+        elif command == 'status':
+            print(json.dumps({'status': 'ready'}, ensure_ascii=False))
+    else:
+        print("استفاده: python3 networkScanner.py [scan|status] [network]")

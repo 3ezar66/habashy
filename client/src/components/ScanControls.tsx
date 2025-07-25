@@ -5,14 +5,18 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { 
-  SearchCheck, 
-  Play, 
-  Wifi, 
-  DoorOpen, 
-  MapPin, 
+import {
+  SearchCheck,
+  Play,
+  Wifi,
+  DoorOpen,
+  MapPin,
   Square,
-  AlertCircle 
+  AlertCircle,
+  Radar,
+  Brain,
+  Radio,
+  Zap
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { toast } from '@/hooks/use-toast';
@@ -127,7 +131,7 @@ export default function ScanControls() {
 
   const startGeolocation = async () => {
     if (isScanning) return;
-    
+
     setIsScanning(true);
     setScanProgress(0);
     setScanStatus('شروع مکان‌یابی...');
@@ -135,8 +139,95 @@ export default function ScanControls() {
 
     toast({
       title: "مکان‌یابی شروع شد",
-      description: "در حال مکان‌یابی دستگاه‌های شناسایی شده",
+      description: "در حال مکان‌یابی دستگاه‌های شناسایی ش��ه",
     });
+  };
+
+  const startAdvancedDetection = async () => {
+    if (isScanning) return;
+
+    setIsScanning(true);
+    setScanProgress(0);
+    setScanStatus('شروع تشخیص پیشرفته...');
+    setScanType('advanced');
+
+    try {
+      const response = await apiRequest('POST', '/api/advanced-detection/start', {
+        detection_types: ['rf_detection', 'vibration_analysis', 'electromagnetic_scan', 'thermal_imaging', 'acoustic_fingerprinting', 'ai_classification'],
+        location: [33.6374, 46.4227], // Ilam coordinates
+        duration: 300
+      });
+
+      const data = await response.json();
+
+      toast({
+        title: "تشخیص پیشرفته شروع شد",
+        description: "تمام ماژول‌های تشخیص چندوجهی فعال شدند",
+      });
+
+      // Monitor scan progress
+      const progressInterval = setInterval(() => {
+        setScanProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(progressInterval);
+            return 100;
+          }
+          return prev + 2;
+        });
+      }, 3000);
+
+    } catch (error) {
+      setScanStatus('خطا در تشخیص پیشرفته');
+      toast({
+        title: "خطا در تشخیص پیشرفته",
+        description: error instanceof Error ? error.message : '��طای نامشخص',
+        variant: 'destructive',
+      });
+    } finally {
+      setTimeout(() => {
+        setIsScanning(false);
+        setScanType('');
+        setScanProgress(0);
+        setScanStatus('آماده برای اسکن');
+      }, 300000); // 5 minutes
+    }
+  };
+
+  const startRFDetection = async () => {
+    if (isScanning) return;
+
+    setIsScanning(true);
+    setScanProgress(0);
+    setScanStatus('شروع اسکن امواج رادیویی...');
+    setScanType('rf');
+
+    try {
+      const response = await apiRequest('POST', '/api/rf-scan', {
+        location: 'Ilam_Province'
+      });
+
+      const data = await response.json();
+
+      toast({
+        title: "اسکن RF شروع شد",
+        description: "در حال جستجوی امضاهای الکترومغناطیسی ماینرها",
+      });
+
+    } catch (error) {
+      setScanStatus('خطا در اسکن RF');
+      toast({
+        title: "خطا در اسکن RF",
+        description: error instanceof Error ? error.message : 'خطای نامشخص',
+        variant: 'destructive',
+      });
+    } finally {
+      setTimeout(() => {
+        setIsScanning(false);
+        setScanType('');
+        setScanProgress(0);
+        setScanStatus('آماده برای اسکن');
+      }, 60000); // 1 minute
+    }
   };
 
   const stopScan = () => {
@@ -168,6 +259,10 @@ export default function ScanControls() {
         return <DoorOpen className="h-4 w-4" />;
       case 'geolocation':
         return <MapPin className="h-4 w-4" />;
+      case 'advanced':
+        return <Radar className="h-4 w-4" />;
+      case 'rf':
+        return <Radio className="h-4 w-4" />;
       default:
         return <AlertCircle className="h-4 w-4" />;
     }
@@ -178,7 +273,7 @@ export default function ScanControls() {
       <CardHeader>
         <CardTitle className="flex items-center text-lg">
           <SearchCheck className="ml-2 h-5 w-5 text-primary" />
-          کنترل‌های اسکن و شناسایی
+          کنترل‌های اسکن و شناسا��ی
         </CardTitle>
       </CardHeader>
       
@@ -270,7 +365,27 @@ export default function ScanControls() {
             <MapPin className="ml-2 h-4 w-4" />
             مکان‌یابی
           </Button>
-          
+
+          <Button
+            onClick={startAdvancedDetection}
+            disabled={isScanning}
+            variant="secondary"
+            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white focus-ring"
+          >
+            <Radar className="ml-2 h-4 w-4" />
+            تشخیص پیشرفته
+          </Button>
+
+          <Button
+            onClick={startRFDetection}
+            disabled={isScanning}
+            variant="secondary"
+            className="bg-red-600 hover:bg-red-700 text-white focus-ring"
+          >
+            <Radio className="ml-2 h-4 w-4" />
+            اسکن RF
+          </Button>
+
           <Button
             onClick={stopScan}
             disabled={!isScanning}
@@ -303,7 +418,9 @@ export default function ScanControls() {
                     {scanType === 'comprehensive' ? 'جامع' :
                      scanType === 'network' ? 'شبکه' :
                      scanType === 'port' ? 'پورت' :
-                     scanType === 'geolocation' ? 'مکان‌یابی' : scanType}
+                     scanType === 'geolocation' ? 'مکان‌یابی' :
+                     scanType === 'advanced' ? 'پیشرفته' :
+                     scanType === 'rf' ? 'امواج رادیویی' : scanType}
                   </Badge>
                 )}
               </div>

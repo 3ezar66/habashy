@@ -13,8 +13,13 @@ import {
 } from "@shared/schema";
 import { spawn } from "child_process";
 import path from "path";
+import { fileURLToPath } from "url";
+import { dirname } from "path";
 import { scrypt, randomBytes } from "crypto";
 import { promisify } from "util";
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 const scryptAsync = promisify(scrypt);
 
@@ -26,19 +31,30 @@ async function hashPassword(password: string) {
 
 async function initializeDefaultUser() {
   try {
-    const existingUser = await storage.getUserByUsername("qwerty");
+    console.log("Checking for existing user...");
+    const existingUser = await storage.getUserByUsername("4501145031");
+    console.log("Existing user:", existingUser ? "Found" : "Not found");
+
     if (!existingUser) {
+      console.log("Creating default user...");
+      const hashedPassword = await hashPassword("470505");
+      console.log("Password hashed, creating user...");
+
       await storage.createUser({
-        username: "qwerty",
-        password: await hashPassword("azerty"),
+        username: "4501145031",
+        password: hashedPassword,
         role: "admin"
       });
       console.log("Default admin user created successfully");
+    } else {
+      console.log("Default user already exists");
     }
   } catch (error) {
     console.error("Error creating default user:", error);
   }
 }
+
+
 
 export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
@@ -159,12 +175,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start comprehensive scan
   app.post("/api/scan/comprehensive", async (req, res) => {
     try {
-      const { ipRange, ports, timeout } = req.body;
-      
+      const { ipRange, ipRanges, ports, timeout, province, cities, isAutomatic } = req.body;
+
+      // Handle both old and new formats
+      let processedRanges;
+      if (ipRanges && Array.isArray(ipRanges)) {
+        // New format: array of range strings
+        processedRanges = ipRanges.map((range: string) => {
+          if (range.includes('-')) {
+            const [start, end] = range.split('-');
+            return { start: start.trim(), end: end.trim() };
+          } else {
+            return { start: range.trim(), end: range.trim() };
+          }
+        });
+      } else if (ipRange) {
+        // Old format: single CIDR or range string
+        if (ipRange.includes('-')) {
+          const [start, end] = ipRange.split('-');
+          processedRanges = [{ start: start.trim(), end: end.trim() }];
+        } else {
+          // Convert CIDR to range
+          processedRanges = [{ start: ipRange, end: ipRange }];
+        }
+      } else {
+        // Default range
+        processedRanges = [{ start: '192.168.1.1', end: '192.168.1.254' }];
+      }
+
       // Create scan session
       const session = await storage.createScanSession({
         sessionType: 'comprehensive',
-        ipRange: ipRange || '192.168.1.0/24',
+        ipRange: ipRanges ? ipRanges.join(';') : ipRange || '192.168.1.0/24',
         ports: Array.isArray(ports) ? ports.join(',') : ports || '22,80,443,4028,8080,9999',
         status: 'running'
       });
@@ -175,17 +217,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
         data: session
       });
 
-      // Run Python miner detection script
-      const pythonScript = path.join(process.cwd(), 'server', 'services', 'minerDetector.py');
-      const pythonProcess = spawn('python3', [pythonScript], {
+      // Run comprehensive Iran network detection script
+      const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
+      console.log(`Starting Python script: ${pythonScript}`);
+
+      // Try python3 first, then python
+      let pythonCmd = 'python3';
+      const pythonProcess = spawn(pythonCmd, [pythonScript], {
         stdio: ['pipe', 'pipe', 'pipe']
       });
 
-      // Send scan configuration to Python script
+      pythonProcess.on('error', (error) => {
+        console.error('Failed to start Python process:', error);
+        return res.status(500).json({ error: 'Failed to start Python process: ' + error.message });
+      });
+
+      // Send comprehensive scan configuration to Python script
       const scanConfig = {
-        ip_range: ipRange || '192.168.1.0/24',
-        ports: Array.isArray(ports) ? ports : (ports ? ports.split(',').map((p: string) => parseInt(p.trim())) : [22, 80, 443, 4028, 8080, 9999]),
-        timeout: timeout || 3
+        ip_ranges: processedRanges,
+        ports: Array.isArray(ports) ? ports : (ports ? ports.split(',').map((p: string) => parseInt(p.trim())) : [22, 80, 443, 4028, 8080, 9999, 3333, 8332, 8333, 9332, 9333, 14433, 18080, 30303, 8545]),
+        timeout: timeout || 3,
+        province: province || 'ilam',
+        cities: cities || [],
+        isAutomatic: isAutomatic || false,
+        enable_geolocation: true,
+        deep_analysis: true
       };
 
       pythonProcess.stdin.write(JSON.stringify(scanConfig));
@@ -211,10 +267,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       pythonProcess.stderr.on('data', (data) => {
         errorOutput += data.toString();
+        console.error('Python stderr:', data.toString());
       });
 
       pythonProcess.on('close', async (code) => {
         try {
+          console.log(`Python process closed with code: ${code}`);
+          console.log(`Python output: ${output.substring(0, 500)}...`);
+          console.log(`Python errors: ${errorOutput}`);
+
           if (code === 0 && output) {
             const results = JSON.parse(output);
             
@@ -300,6 +361,199 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Scan start error:', error);
       res.status(500).json({ error: "Failed to start comprehensive scan" });
+    }
+  });
+
+  // Enhanced scan endpoint with IP range configuration and streaming logs
+  app.post("/api/scan", async (req, res) => {
+    try {
+      const { ipRanges, ports, isAutomatic, province, cities } = req.body;
+
+      // Set up streaming response
+      res.writeHead(200, {
+        'Content-Type': 'application/x-ndjson',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // Send initial log
+      res.write(JSON.stringify({
+        type: 'info',
+        ip: 'System',
+        status: 'شروع اسکن شبکه',
+        details: `محدوده‌ها: ${ipRanges?.join(', ')}`
+      }) + '\n');
+
+      // Convert IP ranges to scan format
+      const processedRanges = ipRanges?.map((range: string) => {
+        if (range.includes('-')) {
+          // Range format: 192.168.1.1-192.168.1.254
+          const [startIp, endIp] = range.split('-');
+          return { start: startIp.trim(), end: endIp.trim() };
+        } else {
+          // Single IP
+          return { start: range.trim(), end: range.trim() };
+        }
+      }) || [];
+
+      // Enhance scan configuration with Iran-specific data
+      const scanConfig = {
+        ip_ranges: processedRanges,
+        ports: ports || [22, 80, 443, 4028, 8080, 9999],
+        isAutomatic: isAutomatic || false,
+        province: province || 'ilam',
+        cities: cities || []
+      };
+
+      // Create scan session
+      const session = await storage.createScanSession({
+        sessionType: 'enhanced_network',
+        ipRange: ipRanges?.join(';') || '192.168.1.0/24',
+        status: 'running'
+      });
+
+      res.write(JSON.stringify({
+        type: 'info',
+        ip: 'System',
+        status: 'جلسه اسکن ایجاد شد',
+        details: `شناسه جلسه: ${session.id}`
+      }) + '\n');
+
+      // Start iranNetworkDetector.py with enhanced parameters
+      const pythonScript = path.join(__dirname, 'services', 'iranNetworkDetector.py');
+      console.log(`Starting enhanced Python script: ${pythonScript}`);
+      console.log(`Scan config: ${JSON.stringify(scanConfig)}`);
+
+      // Try python3 first, then python
+      let pythonCmd = 'python3';
+      const pythonProcess = spawn(pythonCmd, [
+        pythonScript,
+        JSON.stringify(scanConfig)
+      ]);
+
+      pythonProcess.on('error', (error) => {
+        console.error('Failed to start enhanced Python process:', error);
+        res.write(JSON.stringify({
+          type: 'error',
+          ip: 'System',
+          status: 'خطا در شروع فرایند Python',
+          details: error.message
+        }) + '\n');
+        res.end();
+      });
+
+      const results: any[] = [];
+      let scanOutput = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        const output = data.toString();
+        scanOutput += output;
+
+        try {
+          const lines = output.split('\n').filter(line => line.trim());
+          for (const line of lines) {
+            if (line.startsWith('{')) {
+              const result = JSON.parse(line);
+              results.push(result);
+
+              // Stream the result to client
+              res.write(JSON.stringify({
+                type: result.suspicion_score > 0.7 ? 'warning' : 'info',
+                ip: result.ip,
+                port: result.port,
+                status: result.status || 'پاسخ دریافت شد',
+                details: `امتیاز مشکوک: ${result.suspicion_score || 0}`
+              }) + '\n');
+            } else if (line.includes('Scanning')) {
+              // Stream scanning progress
+              res.write(JSON.stringify({
+                type: 'info',
+                ip: 'Scanner',
+                status: line
+              }) + '\n');
+            }
+          }
+        } catch (e) {
+          // Non-JSON output, send as info
+          if (output.trim()) {
+            res.write(JSON.stringify({
+              type: 'info',
+              ip: 'System',
+              status: output.trim()
+            }) + '\n');
+          }
+        }
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        const error = data.toString();
+        console.error('Python script error:', error);
+        res.write(JSON.stringify({
+          type: 'error',
+          ip: 'System',
+          status: 'خطای اسکریپت پایتون',
+          details: error
+        }) + '\n');
+      });
+
+      pythonProcess.on('close', async (code) => {
+        try {
+          // Store results in database
+          for (const result of results) {
+            await storage.createMiner({
+              ip: result.ip,
+              location: result.location || 'Unknown',
+              suspicionScore: result.suspicion_score || 0,
+              lastSeen: new Date(),
+              detectionMethod: 'network_scan',
+              details: JSON.stringify(result)
+            });
+          }
+
+          // Update scan session
+          await storage.updateScanSession(session.id, {
+            status: 'completed',
+            endTime: new Date(),
+            devicesFound: results.length
+          });
+
+          // Send completion message
+          res.write(JSON.stringify({
+            type: 'success',
+            ip: 'System',
+            status: 'اسکن کامل شد',
+            details: `${results.length} دستگاه مشکوک یافت شد`
+          }) + '\n');
+
+          // Broadcast scan completion
+          broadcast({
+            type: 'scan_completed',
+            data: { sessionId: session.id, results }
+          });
+
+        } catch (error) {
+          console.error('Error storing scan results:', error);
+          res.write(JSON.stringify({
+            type: 'error',
+            ip: 'System',
+            status: 'خطا در ذخیره نتایج',
+            details: error instanceof Error ? error.message : 'خطای ناشناخته'
+          }) + '\n');
+        } finally {
+          res.end();
+        }
+      });
+
+    } catch (error) {
+      console.error('Scan error:', error);
+      res.write(JSON.stringify({
+        type: 'error',
+        ip: 'System',
+        status: 'خطا در شروع اسکن',
+        details: error instanceof Error ? error.message : 'خطای ناشناخته'
+      }) + '\n');
+      res.end();
     }
   });
 
@@ -631,11 +885,193 @@ print(json.dumps(result, ensure_ascii=False))
     }
   });
 
+  // Advanced Detection System Endpoints
+
+  // Start advanced detection
+  app.post("/api/advanced-detection/start", async (req, res) => {
+    try {
+      const { detection_types, location, duration } = req.body;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'start'], {
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+
+      const config = {
+        detection_types: detection_types || ['rf_detection', 'vibration_analysis', 'electromagnetic_scan'],
+        location: location || [33.6374, 46.4227],
+        duration: duration || 300
+      };
+
+      pythonProcess.stdin.write(JSON.stringify(config));
+      pythonProcess.stdin.end();
+
+      let output = '';
+      let errorOutput = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.stderr.on('data', (data) => {
+        errorOutput += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+
+            // Broadcast detection start
+            broadcast({
+              type: 'advanced_detection_started',
+              data: result
+            });
+
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse detection result' });
+          }
+        } else {
+          res.status(500).json({
+            error: 'Advanced detection failed',
+            details: errorOutput
+          });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to start advanced detection" });
+    }
+  });
+
+  // Stop advanced detection
+  app.post("/api/advanced-detection/stop/:sessionId", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'stop', sessionId]);
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0) {
+          broadcast({
+            type: 'advanced_detection_stopped',
+            data: { sessionId }
+          });
+
+          res.json({ status: 'stopped', sessionId });
+        } else {
+          res.status(500).json({ error: 'Failed to stop detection' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to stop advanced detection" });
+    }
+  });
+
+  // Get advanced detection status
+  app.get("/api/advanced-detection/status", async (req, res) => {
+    try {
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'status']);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse status result' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get detection status' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get detection status" });
+    }
+  });
+
+  // Get real-time alerts
+  app.get("/api/advanced-detection/alerts", async (req, res) => {
+    try {
+      const hours = parseInt(req.query.hours as string) || 24;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const pythonProcess = spawn('python3', [pythonScript, 'alerts', hours.toString()]);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse alerts result' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get alerts' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get alerts" });
+    }
+  });
+
+  // Get detection results
+  app.get("/api/advanced-detection/results/:sessionId?", async (req, res) => {
+    try {
+      const { sessionId } = req.params;
+      const hours = parseInt(req.query.hours as string) || 24;
+
+      const pythonScript = path.join(process.cwd(), 'server', 'services', 'advanced_detection.py');
+      const args = sessionId ? ['results', sessionId] : ['results', hours.toString()];
+      const pythonProcess = spawn('python3', [pythonScript, ...args]);
+
+      let output = '';
+
+      pythonProcess.stdout.on('data', (data) => {
+        output += data.toString();
+      });
+
+      pythonProcess.on('close', (code) => {
+        if (code === 0 && output) {
+          try {
+            const result = JSON.parse(output);
+            res.json(result);
+          } catch (parseError) {
+            res.status(500).json({ error: 'Failed to parse results' });
+          }
+        } else {
+          res.status(500).json({ error: 'Failed to get detection results' });
+        }
+      });
+
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get detection results" });
+    }
+  });
+
   // Export data
   app.get("/api/export", async (req, res) => {
     try {
       const format = req.query.format as string || 'json';
-      
+
       const data = {
         miners: await storage.getDetectedMiners(),
         activities: await storage.getRecentActivities(),

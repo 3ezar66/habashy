@@ -37,7 +37,8 @@ export function setupAuth(app: Express) {
     cookie: {
       maxAge: 24 * 60 * 60 * 1000, // 24 hours
       secure: false, // Set to true in production with HTTPS
-      httpOnly: true
+      httpOnly: true,
+      sameSite: 'lax' // Allow cross-site cookies for dev
     }
   };
 
