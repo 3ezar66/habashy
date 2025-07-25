@@ -170,12 +170,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Start comprehensive scan
   app.post("/api/scan/comprehensive", async (req, res) => {
     try {
-      const { ipRange, ports, timeout } = req.body;
-      
+      const { ipRange, ipRanges, ports, timeout, province, cities, isAutomatic } = req.body;
+
+      // Handle both old and new formats
+      let processedRanges;
+      if (ipRanges && Array.isArray(ipRanges)) {
+        // New format: array of range strings
+        processedRanges = ipRanges.map((range: string) => {
+          if (range.includes('-')) {
+            const [start, end] = range.split('-');
+            return { start: start.trim(), end: end.trim() };
+          } else {
+            return { start: range.trim(), end: range.trim() };
+          }
+        });
+      } else if (ipRange) {
+        // Old format: single CIDR or range string
+        if (ipRange.includes('-')) {
+          const [start, end] = ipRange.split('-');
+          processedRanges = [{ start: start.trim(), end: end.trim() }];
+        } else {
+          // Convert CIDR to range
+          processedRanges = [{ start: ipRange, end: ipRange }];
+        }
+      } else {
+        // Default range
+        processedRanges = [{ start: '192.168.1.1', end: '192.168.1.254' }];
+      }
+
       // Create scan session
       const session = await storage.createScanSession({
         sessionType: 'comprehensive',
-        ipRange: ipRange || '192.168.1.0/24',
+        ipRange: ipRanges ? ipRanges.join(';') : ipRange || '192.168.1.0/24',
         ports: Array.isArray(ports) ? ports.join(',') : ports || '22,80,443,4028,8080,9999',
         status: 'running'
       });
@@ -194,10 +220,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send comprehensive scan configuration to Python script
       const scanConfig = {
-        ip_range: ipRange || '192.168.1.0/24',
+        ip_ranges: processedRanges,
         ports: Array.isArray(ports) ? ports : (ports ? ports.split(',').map((p: string) => parseInt(p.trim())) : [22, 80, 443, 4028, 8080, 9999, 3333, 8332, 8333, 9332, 9333, 14433, 18080, 30303, 8545]),
         timeout: timeout || 3,
-        province: 'ilam', // Default to Ilam province
+        province: province || 'ilam',
+        cities: cities || [],
+        isAutomatic: isAutomatic || false,
         enable_geolocation: true,
         deep_analysis: true
       };
