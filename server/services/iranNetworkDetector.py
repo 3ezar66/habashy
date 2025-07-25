@@ -458,6 +458,76 @@ class IranNetworkDetector:
         
         return mining_indicators
 
+    def analyze_detection_results(self, detected_devices):
+        """Analyze overall detection results"""
+        try:
+            analysis = {
+                'miners_found': 0,
+                'suspicious_devices': 0,
+                'total_devices': len(detected_devices),
+                'threat_levels': {'critical': 0, 'high': 0, 'medium': 0, 'low': 0},
+                'common_ports': {},
+                'geographic_distribution': {}
+            }
+
+            for device in detected_devices:
+                # Count threat levels
+                threat_level = device.get('threat_assessment', {}).get('threat_level', 'low')
+                analysis['threat_levels'][threat_level] += 1
+
+                # Count miners and suspicious devices
+                if device.get('threat_assessment', {}).get('is_miner', False):
+                    analysis['miners_found'] += 1
+                elif threat_level in ['medium', 'high', 'critical']:
+                    analysis['suspicious_devices'] += 1
+
+                # Analyze common ports
+                for port in device.get('open_ports', []):
+                    analysis['common_ports'][port] = analysis['common_ports'].get(port, 0) + 1
+
+                # Geographic analysis
+                location = device.get('geolocation', {})
+                if location and 'city' in location:
+                    city = location['city']
+                    analysis['geographic_distribution'][city] = analysis['geographic_distribution'].get(city, 0) + 1
+
+            return analysis
+
+        except Exception as e:
+            print(f"Error analyzing results: {e}")
+            return {'miners_found': 0, 'suspicious_devices': 0, 'total_devices': 0}
+
+    def store_scan_results(self, detected_devices, config):
+        """Store scan results in database"""
+        try:
+            conn = self.get_db_connection()
+            if not conn:
+                return
+
+            cursor = conn.cursor()
+
+            for device in detected_devices:
+                # Store device info
+                cursor.execute('''
+                    INSERT OR REPLACE INTO miners (
+                        ip, location, suspicion_score, last_seen,
+                        detection_method, details
+                    ) VALUES (?, ?, ?, ?, ?, ?)
+                ''', (
+                    device['ip_address'],
+                    json.dumps(device.get('geolocation', {})),
+                    device.get('threat_assessment', {}).get('suspicion_score', 0),
+                    device['detection_timestamp'],
+                    'iran_network_scan',
+                    json.dumps(device)
+                ))
+
+            conn.commit()
+            conn.close()
+
+        except Exception as e:
+            print(f"Error storing scan results: {e}")
+
     def assess_mining_threat(self, device_info):
         """Assess overall mining threat"""
         
